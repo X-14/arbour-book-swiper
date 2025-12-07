@@ -1,0 +1,193 @@
+/* General settings */
+body {
+    margin: 0;
+    padding: 0;
+    font-family: 'Poppins', sans-serif;
+    background-color: #F5F7FA;
+    color: #003A63;
+ }
+ 
+ 
+ /* Header */
+ header {
+    background-color: #003A63;
+    color: white;
+    text-align: center;
+    padding: 40px 20px;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+ }
+ 
+ 
+ header h1 {
+    margin: 0;
+    font-size: 40px;
+    font-weight: 600;
+ }
+ 
+ 
+ header p {
+    font-size: 18px;
+    margin-top: 10px;
+    font-weight: 300;
+ }
+ 
+ 
+ /* Main content */
+ main {
+    padding: 40px;
+ }
+ 
+ 
+ /* Intro section */
+ .intro {
+    text-align: center;
+    margin-bottom: 40px;
+ }
+ 
+ 
+ .intro h2 {
+    font-size: 28px;
+    color: #003A63;
+ }
+ 
+ 
+ .intro p {
+    font-size: 16px;
+    color: #4DA9E9;
+ }
+ 
+ 
+ /* Search Bar */
+ .search-bar {
+    width: 60%;
+    padding: 12px;
+    font-size: 16px;
+    border: 2px solid #4DA9E9;
+    border-radius: 8px;
+    outline: none;
+    margin-top: 15px;
+ }
+ 
+ 
+ .search-bar:focus {
+    border-color: #C9A300;
+ }
+ 
+ 
+ /* Book Cards */
+ #book-list {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+    justify-content: center; 
+    width: 1000px; 
+    margin-left: 400px;
+            
+    scroll-behavior: smooth;
+   overflow-x: scroll;
+   gap: 20px;
+  
+ }
+ #book-list:hover { 
+   background-color: gray;
+ }
+ #book-list::-webkit-scrollbar {
+   display: none;  /* Chrome, Safari */
+}
+ 
+ #book-card {
+    background-color: #003A63;
+    padding: 20px;
+    width: 260px;
+    height: 500px;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    transition: 0.2s;
+    flex: 0 0 auto;
+    white-space: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;            /* stops overflow */
+    word-wrap: break-word; 
+    
+ }
+ 
+ 
+ #book-card:hover {
+    transform: translateY(-5px);
+ }
+ 
+ 
+ #book-card h3 {
+    margin-top: 0;
+    font-weight: 600;
+    color: white;
+ }
+ 
+ 
+ #book-card p {
+    color: #4DA9E9;
+    font-size: 14px;
+    margin-bottom: 20px;
+    align-items: center;
+ }
+ 
+ 
+ h4{
+    background-color: #C9A300;
+    color: white;
+    padding: 10px 15px;
+    border: none; 
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+ }
+ 
+ #author{ 
+   color:#C9A300; 
+ }
+ 
+ #book-card button:hover {
+    background-color: #4DA9E9;
+ }
+ 
+
+ h4 { 
+    color:white
+ }
+
+ #description{ 
+   display: flex;
+    flex-direction: column;    /* stack title, description, button */
+    overflow: hidden;          /* hide overflow */
+    word-wrap: break-word;     /* wrap long words */
+    text-overflow: ellipsis; 
+ }
+
+ #image{ 
+   width: 60%;
+   height: 60%;
+   margin-left: auto;
+   margin-right: auto;
+ }
+
+#checkmark{ 
+   width: 0px;
+   height: 0px;
+   margin-left: auto;
+   margin-right: auto;
+   margin-top: auto;
+   margin-bottom: auto;
+   transition: width 0.3s ease, height 0.3s ease;
+   object-fit: contain; 
+}
+#xmark{ 
+   width: 0px;
+   height: 0px;
+   margin-left: auto;
+   margin-right: auto;
+   margin-top: auto;
+   margin-bottom: auto;
+   transition: width 0.3s ease, height 0.3s ease;
+   object-fit: contain; 
+}

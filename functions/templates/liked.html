@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Liked Books • Arbour</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/arbour.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/arbour.css') }}">
+</head>
+
+<body>
+
+    <header class="brand">
+        <div class="brand__inner">
+            <h1>My Liked Books</h1>
+            <div class="nav-bar">
+                <a href="/recommendation">Swipe</a>
+                <a href="/liked" class="active">Liked Books</a>
+                <a href="/search">Search</a>
+                <a href="#" id="logoutBtn" style="color: #ff8a80;">Logout</a>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <div id="loading" style="text-align:center; margin-top:50px;">Loading your library...</div>
+        <div id="bookGrid" class="book-grid"></div>
+    </main>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-app.js";
+        import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-auth.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDTUuPffjD2WeQC7MDlFKBCOcRAmREjWJs",
+            authDomain: "booktinder-fb868.firebaseapp.com",
+            projectId: "booktinder-fb868",
+            storageBucket: "booktinder-fb868.firebasestorage.app",
+            messagingSenderId: "660028415634",
+            appId: "1:660028415634:web:c078752bb53502afcc904b",
+            measurementId: "G-1WB2RYS3XB"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                loadLikedBooks(user.uid);
+
+                // Update nav links to include user_id if needed, or just rely on auth state
+                // Actually, the recommendation page needs user_id param if accessed directly, 
+                // but our JS redirect handles it. 
+                // Let's update the Swipe link dynamically just in case.
+                document.querySelector('a[href="/recommendation"]').href = `/recommendation?user_id=${user.uid}`;
+            } else {
+                window.location.href = "/";
+            }
+        });
+
+        document.getElementById("logoutBtn").addEventListener("click", () => {
+            signOut(auth).then(() => window.location.href = "/");
+        });
+
+        async function loadLikedBooks(userId) {
+            try {
+                const res = await fetch(`/api/liked_books?user_id=${userId}`);
+                const books = await res.json();
+
+                const grid = document.getElementById("bookGrid");
+                document.getElementById("loading").style.display = "none";
+
+                if (books.length === 0) {
+                    grid.innerHTML = "<p style='text-align:center; width:100%;'>You haven't liked any books yet.</p>";
+                    return;
+                }
+
+                grid.innerHTML = books.map(book => `
+                    <div class="book-item">
+                        <img src="${book.image_url}" alt="${book.title}">
+                        <h3>${book.title}</h3>
+                        <p>${book.author}</p>
+                    </div>
+                `).join("");
+
+            } catch (err) {
+                console.error(err);
+                document.getElementById("loading").textContent = "Error loading books.";
+            }
+        }
+    </script>
+</body>
+
+</html>

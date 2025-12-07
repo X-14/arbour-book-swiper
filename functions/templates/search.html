@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Search Books • Arbour</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/arbour.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/arbour.css') }}">
+</head>
+
+<body>
+
+    <header class="brand">
+        <div class="brand__inner">
+            <h1>Search Library</h1>
+            <div class="nav-bar">
+                <a href="/recommendation">Swipe</a>
+                <a href="/liked">Liked Books</a>
+                <a href="/search" class="active">Search</a>
+                <a href="#" id="logoutBtn" style="color: #ff8a80;">Logout</a>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <div class="search-container">
+            <input type="text" id="searchInput" class="search-input" placeholder="Search by title or author...">
+            <button id="searchBtn" class="search-btn">Search</button>
+        </div>
+
+        <div id="results" class="results-list"></div>
+    </main>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-app.js";
+        import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-auth.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDTUuPffjD2WeQC7MDlFKBCOcRAmREjWJs",
+            authDomain: "booktinder-fb868.firebaseapp.com",
+            projectId: "booktinder-fb868",
+            storageBucket: "booktinder-fb868.firebasestorage.app",
+            messagingSenderId: "660028415634",
+            appId: "1:660028415634:web:c078752bb53502afcc904b",
+            measurementId: "G-1WB2RYS3XB"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                document.querySelector('a[href="/recommendation"]').href = `/recommendation?user_id=${user.uid}`;
+            } else {
+                window.location.href = "/";
+            }
+        });
+
+        document.getElementById("logoutBtn").addEventListener("click", () => {
+            signOut(auth).then(() => window.location.href = "/");
+        });
+
+        const searchBtn = document.getElementById("searchBtn");
+        const searchInput = document.getElementById("searchInput");
+        const resultsDiv = document.getElementById("results");
+
+        async function performSearch() {
+            const query = searchInput.value.trim();
+            if (!query) return;
+
+            resultsDiv.innerHTML = "<p style='text-align:center'>Searching...</p>";
+
+            try {
+                const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
+                const books = await res.json();
+
+                if (books.length === 0) {
+                    resultsDiv.innerHTML = "<p style='text-align:center'>No books found.</p>";
+                    return;
+                }
+
+                resultsDiv.innerHTML = books.map(book => `
+                    <div class="result-item">
+                        <img src="${book.image_url}" alt="${book.title}">
+                        <div class="result-info">
+                            <h3>${book.title}</h3>
+                            <p><strong>Author:</strong> ${book.author}</p>
+                            <p>${book.description.substring(0, 150)}...</p>
+                        </div>
+                    </div>
+                `).join("");
+
+            } catch (err) {
+                console.error(err);
+                resultsDiv.innerHTML = "<p style='text-align:center'>Error searching.</p>";
+            }
+        }
+
+        searchBtn.addEventListener("click", performSearch);
+        searchInput.addEventListener("keypress", (e) => {
+            if (e.key === "Enter") performSearch();
+        });
+    </script>
+</body>
+
+</html>

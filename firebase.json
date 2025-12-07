@@ -1,0 +1,48 @@
+{
+  "hosting": {
+    "public": "public",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "rewrites": [
+      {
+        "source": "/",
+        "destination": "/index.html"
+      },
+      {
+        "source": "/login",
+        "destination": "/index.html"
+      },
+      {
+        "source": "/preferences",
+        "destination": "/preferences.html"
+      },
+      {
+        "source": "/homepage",
+        "destination": "/homepage.html"
+      },
+      {
+        "source": "/recommendation",
+        "destination": "/recommendation.html"
+      },
+      {
+        "source": "/liked",
+        "destination": "/liked.html"
+      },
+      {
+        "source": "/search",
+        "destination": "/search.html"
+      },
+      {
+        "source": "/signup",
+        "destination": "/signup.html"
+      },
+      {
+        "source": "/isbn",
+        "destination": "/isbn.html"
+      }
+    ]
+  }
+}

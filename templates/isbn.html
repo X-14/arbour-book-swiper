@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Admin ISBN Page</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/arbour.css') }}">
+</head>
+
+<body>
+
+    <header class="brand">
+        <div class="brand__inner">
+            <h1>Library Admin</h1>
+            <p>ISBN Book Management</p>
+        </div>
+    </header>
+
+    <main class="auth">
+        <div class="card">
+
+            <h2 class="card__title">Add Book by ISBN</h2>
+
+            <div class="form">
+                <div class="field">
+                    <span>ISBN</span>
+                    <input type="text" id="isbnInput" placeholder="Enter or scan ISBN">
+                </div>
+                <button id="searchBtn" class="btn btn--primary">Search</button>
+            </div>
+
+            <div id="bookInfo" class="book-info"></div>
+
+            <hr class="divider">
+
+            <h2 class="card__title">Search the Database</h2>
+
+            <div class="form">
+                <div class="field">
+                    <span>ISBN</span>
+                    <input type="text" id="dbIsbnInput" placeholder="Enter ISBN to look up">
+                </div>
+                <button id="dbSearchBtn" class="btn btn--primary">Search Database</button>
+            </div>
+
+            <div id="dbBookInfo" class="book-info"></div>
+
+            <button id="backToLoginBtn" class="btn btn--primary">Go Back to Login</button>
+        </div>
+        </div>
+
+        <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+        <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+        <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+
+        <script>
+            const firebaseConfig = {
+                apiKey: "AIzaSyDTUuPffjD2WeQC7MDlFKBCOcRAmREjWJs",
+                authDomain: "booktinder-fb868.firebaseapp.com",
+                projectId: "booktinder-fb868",
+                storageBucket: "booktinder-fb868.firebasestorage.app",
+                messagingSenderId: "660028415634",
+                appId: "1:660028415634:web:c078752bb53502afcc904b",
+                measurementId: "G-1WB2RYS3XB"
+            };
+            // Initialize Firebase app
+            if (!firebase.apps.length) {
+                firebase.initializeApp(firebaseConfig);
+            }
+        </script>
+
+        <script src="{{ url_for('static', filename='js/isbn.js') }}"></script>
+</body>
+
+</html>

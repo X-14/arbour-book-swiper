@@ -1,0 +1,524 @@
+/* Arbour Theme - Woody & Earthy Premium */
+
+:root {
+    /* Core Palette */
+    --primary-gold: #BA8c4f;
+    /* Light Wood / Accent */
+    --primary-green: #629460;
+    /* Leaf Green / Action */
+    --primary-dark: #243119;
+    /* Dark Wood / Text / Backgrounds */
+
+    /* Neutrals & Utilities */
+    --white: #ffffff;
+    --off-white: #f9f9f9;
+    --glass-bg: rgba(255, 255, 255, 0.95);
+    --glass-border: rgba(255, 255, 255, 0.2);
+    --shadow-soft: 0 8px 30px rgba(0, 0, 0, 0.12);
+    --shadow-strong: 0 15px 35px rgba(36, 49, 25, 0.25);
+
+    /* Typography */
+    --font-main: 'Poppins', sans-serif;
+    --font-heading: 'Georgia', serif;
+}
+
+body {
+    background-color: var(--off-white);
+    color: var(--primary-dark);
+    font-family: var(--font-main);
+    margin: 0;
+    padding: 0;
+    min-height: 100vh;
+    /* Subtle gradient background instead of missing texture */
+    background: linear-gradient(135deg, #fdfbf7 0%, #eef2f3 100%);
+    display: flex;
+    flex-direction: column;
+}
+
+/* Typography */
+h1,
+h2,
+h3,
+h4 {
+    font-family: var(--font-heading);
+    color: var(--primary-dark);
+    margin-top: 0;
+}
+
+a {
+    color: var(--primary-green);
+    text-decoration: none;
+    font-weight: 600;
+    transition: color 0.2s ease;
+}
+
+a:hover {
+    color: var(--primary-gold);
+}
+
+/* Header */
+header.brand {
+    background-color: var(--primary-dark);
+    color: var(--white);
+    padding: 2rem 1rem;
+    text-align: center;
+    box-shadow: var(--shadow-soft);
+    border-bottom: 4px solid var(--primary-gold);
+}
+
+header.brand h1 {
+    color: var(--primary-gold);
+    margin: 0;
+    font-size: 2.2rem;
+    letter-spacing: 0.5px;
+}
+
+header.brand p {
+    color: rgba(255, 255, 255, 0.8);
+    margin-top: 0.5rem;
+    font-size: 1rem;
+    font-weight: 300;
+}
+
+/* Main Layout */
+main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 2rem 1rem;
+}
+
+/* Cards & Containers */
+.card,
+.container {
+    background: var(--glass-bg);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(186, 140, 79, 0.2);
+    /* Subtle gold border */
+    border-radius: 16px;
+    box-shadow: var(--shadow-soft);
+    padding: 2.5rem;
+    width: 100%;
+    max-width: 500px;
+    margin: 0 auto;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-strong);
+}
+
+.card__title {
+    text-align: center;
+    font-size: 1.8rem;
+    margin-bottom: 1.5rem;
+    color: var(--primary-dark);
+    border-bottom: 2px solid var(--primary-gold);
+    padding-bottom: 0.5rem;
+    display: inline-block;
+}
+
+/* Forms */
+.form-group,
+.section {
+    margin-bottom: 1.5rem;
+}
+
+label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+    color: var(--primary-dark);
+    font-size: 0.95rem;
+}
+
+input[type="text"],
+input[type="email"],
+input[type="password"],
+select,
+textarea {
+    width: 100%;
+    padding: 12px 16px;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    font-family: var(--font-main);
+    font-size: 1rem;
+    transition: all 0.2s ease;
+    background-color: var(--white);
+    box-sizing: border-box;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+    outline: none;
+    border-color: var(--primary-green);
+    box-shadow: 0 0 0 4px rgba(98, 148, 96, 0.15);
+}
+
+/* Checkboxes & Radios */
+.options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.options label {
+    display: flex;
+    align-items: center;
+    background: var(--white);
+    padding: 8px 12px;
+    border: 1px solid #e0e0e0;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-weight: normal;
+}
+
+.options label:hover {
+    border-color: var(--primary-gold);
+    background: #fffdf5;
+}
+
+.options input {
+    margin-right: 8px;
+    accent-color: var(--primary-green);
+}
+
+/* Buttons */
+button,
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--primary-green);
+    color: var(--white);
+    border: none;
+    padding: 14px 28px;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 6px rgba(98, 148, 96, 0.2);
+    width: 100%;
+    /* Default to full width for auth forms */
+}
+
+button:hover,
+.btn:hover {
+    background-color: #4e7a4c;
+    /* Darker green */
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(98, 148, 96, 0.3);
+}
+
+/* Specific Button Styles */
+#googleBtn {
+    background-color: var(--white);
+    color: var(--primary-dark);
+    border: 2px solid #e0e0e0;
+    margin-bottom: 1rem;
+}
+
+#googleBtn:hover {
+    background-color: #f5f5f5;
+    border-color: #ccc;
+}
+
+#adminLoginBtn {
+    background-color: transparent;
+    color: var(--primary-gold);
+    border: 2px solid var(--primary-gold);
+    margin-top: 1rem;
+    width: auto;
+    padding: 8px 16px;
+    font-size: 0.9rem;
+}
+
+#adminLoginBtn:hover {
+    background-color: var(--primary-gold);
+    color: var(--white);
+}
+
+/* Book Swiper Card */
+#book-list {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 60vh;
+    position: relative;
+    width: 100%;
+}
+
+#book-card {
+    background-color: var(--white);
+    width: 340px;
+    height: 600px;
+    border-radius: 20px;
+    box-shadow: var(--shadow-strong);
+    padding: 24px;
+    text-align: center;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+#book-card img {
+    width: 180px;
+    height: 270px;
+    object-fit: cover;
+    border-radius: 8px;
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+    margin: 0 auto 20px auto;
+}
+
+#book-card h3 {
+    font-size: 1.5rem;
+    margin: 0 0 8px 0;
+    color: var(--primary-dark);
+    line-height: 1.3;
+}
+
+#author {
+    color: var(--primary-gold);
+    font-weight: 600;
+    font-style: italic;
+    margin-bottom: 1rem;
+    display: block;
+}
+
+#description {
+    font-size: 0.95rem;
+    color: #555;
+    line-height: 1.6;
+    text-align: left;
+    background: #f8f9fa;
+    padding: 12px;
+    border-radius: 8px;
+    flex-grow: 1;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 5;
+    line-clamp: 5;
+    -webkit-box-orient: vertical;
+}
+
+#similiarityScore {
+    background-color: var(--primary-gold);
+    color: var(--white);
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-weight: bold;
+    font-size: 0.8rem;
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Swipe Indicators */
+#checkmark,
+#xmark {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 0;
+    height: 0;
+    opacity: 0;
+    transition: all 0.3s ease;
+    z-index: 10;
+}
+
+#checkmark {
+    right: 50px;
+}
+
+#xmark {
+    left: 50px;
+}
+
+/* Navigation */
+.nav-bar {
+    margin-top: 1rem;
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+.nav-bar a {
+    color: rgba(255, 255, 255, 0.9);
+    font-weight: 500;
+    font-size: 1rem;
+    padding: 5px 10px;
+    border-radius: 6px;
+    transition: all 0.2s;
+}
+
+.nav-bar a:hover,
+.nav-bar a.active {
+    color: var(--primary-gold);
+    background: rgba(255, 255, 255, 0.1);
+}
+
+/* Dashboard (Homepage) */
+.dashboard {
+    max-width: 900px;
+    margin: 0 auto;
+    width: 100%;
+}
+
+.topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+}
+
+.user-info {
+    font-size: 1.2rem;
+    color: var(--primary-dark);
+    margin-bottom: 2rem;
+    font-weight: 300;
+}
+
+/* Book Grid (Liked Books) */
+.book-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 24px;
+    width: 100%;
+    margin-top: 2rem;
+}
+
+.book-item {
+    background: var(--white);
+    border-radius: 12px;
+    padding: 16px;
+    text-align: center;
+    box-shadow: var(--shadow-soft);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    border: 1px solid rgba(0, 0, 0, 0.05);
+    display: flex;
+    flex-direction: column;
+}
+
+.book-item:hover {
+    transform: translateY(-5px);
+    box-shadow: var(--shadow-strong);
+}
+
+.book-item img {
+    width: 100%;
+    height: 260px;
+    object-fit: cover;
+    border-radius: 8px;
+    margin-bottom: 12px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.book-item h3 {
+    font-size: 1.1rem;
+    margin: 8px 0;
+    color: var(--primary-dark);
+    line-height: 1.3;
+}
+
+.book-item p {
+    font-size: 0.9rem;
+    color: #666;
+    margin-top: auto;
+    /* Push to bottom */
+}
+
+/* Search Page */
+.search-container {
+    width: 100%;
+    max-width: 700px;
+    margin: 0 auto 2rem;
+    display: flex;
+    gap: 10px;
+}
+
+.search-input {
+    flex: 1;
+    padding: 14px 20px;
+    font-size: 1.1rem;
+    border: 2px solid #e0e0e0;
+    border-radius: 12px;
+    transition: all 0.2s;
+}
+
+.search-input:focus {
+    border-color: var(--primary-green);
+    outline: none;
+    box-shadow: 0 0 0 4px rgba(98, 148, 96, 0.1);
+}
+
+.search-btn {
+    width: auto;
+    padding: 0 30px;
+    border-radius: 12px;
+}
+
+.results-list {
+    width: 100%;
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.result-item {
+    background: var(--white);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 20px;
+    display: flex;
+    gap: 24px;
+    box-shadow: var(--shadow-soft);
+    border: 1px solid rgba(0, 0, 0, 0.05);
+    transition: transform 0.2s;
+}
+
+.result-item:hover {
+    transform: translateY(-2px);
+}
+
+.result-item img {
+    width: 100px;
+    height: 150px;
+    object-fit: cover;
+    border-radius: 6px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.result-info {
+    flex: 1;
+    text-align: left;
+}
+
+.result-info h3 {
+    margin-top: 0;
+    margin-bottom: 0.5rem;
+    color: var(--primary-dark);
+}
+
+.result-info p {
+    margin: 0.5rem 0;
+    color: #555;
+    font-size: 0.95rem;
+    line-height: 1.5;
+}
+
+/* Footer */
+.footer {
+    text-align: center;
+    padding: 2rem;
+    color: #888;
+    font-size: 0.9rem;
+    margin-top: auto;
+    border-top: 1px solid rgba(0, 0, 0, 0.05);
+}

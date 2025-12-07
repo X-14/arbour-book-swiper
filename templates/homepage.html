@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard • Arbour</title>
+
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/arbour.css') }}">
+  <script type="module" src="{{ url_for('static', filename='js/homepage.js') }}" defer></script>
+</head>
+
+<body>
+
+  <header class="brand">
+    <div class="brand__inner">
+      <h1>Arbour Book Recommender</h1>
+      <p>Your Personal Dashboard</p>
+    </div>
+  </header>
+
+  <main>
+    <div class="dashboard">
+      <div class="topbar">
+        <h2>Welcome Back</h2>
+        <button class="btn" id="logoutBtn" style="width: auto; background-color: #d9534f;">Log Out</button>
+      </div>
+
+      <p class="user-info" id="userInfo">Loading user...</p>
+
+      <div class="card section">
+        <h3 class="card__title" style="font-size: 1.4rem; border-bottom: none; margin-bottom: 1rem;">Your Favorite
+          Genres</h3>
+        <p id="genreList">Loading...</p>
+      </div>
+
+      <div class="card section">
+        <h3 class="card__title" style="font-size: 1.4rem; border-bottom: none; margin-bottom: 1rem;">Reading Frequency
+        </h3>
+        <p id="freqInfo">Loading...</p>
+      </div>
+
+      <div class="card section" style="text-align: center;">
+        <h3 class="card__title" style="font-size: 1.4rem; border-bottom: none; margin-bottom: 1rem;">Ready to find your
+          next book?</h3>
+        <button class="btn" id="goToRecs" style="max-width: 300px;">Go to Recommender</button>
+      </div>
+
+    </div>
+  </main>
+
+  <footer class="footer">
+    <p>© <span id="year"></span> Arbour Book Recommender</p>
+  </footer>
+
+  <script>
+    document.getElementById("year").textContent = new Date().getFullYear();
+  </script>
+
+</body>
+
+</html>

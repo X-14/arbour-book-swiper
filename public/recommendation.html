@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Arbour Book Recommender</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="static/css/arbour.css">
+</head>
+
+<body>
+
+    <header class="brand">
+        <div class="brand__inner">
+            <h1>Arbour Book Recommendation</h1>
+            <div class="nav-bar">
+                <a href="#" id="navSwipe" class="active">Swipe</a>
+                <a href="/liked">Liked Books</a>
+                <a href="/search">Search</a>
+                <a href="#" id="logoutBtn" style="color: #ff8a80;">Logout</a>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <section class="intro">
+            <h2>Find Your Next Read</h2>
+            <p>Use <strong>Left Arrow</strong> to Dislike, <strong>Right Arrow</strong> to Like</p>
+        </section>
+
+        <section id="book-list">
+            <img id="xmark" src="static/images/Red-x-mark-transparent-background-1-Transparent-Images.png"
+                alt="Dislike">
+
+            <div id="book-card" data-book-id="">
+                <img id="image" src="" alt="Book Cover">
+                <h3 id="title">Loading...</h3>
+                <p><strong>Author:</strong> <span id="author">Loading...</span></p>
+                <p id="description">Please wait while we find your perfect book...</p>
+                <h4 id="similiarityScore"></h4>
+            </div>
+
+            <img id="checkmark" src="static/images/checkmark-png-5.png" alt="Like">
+        </section>
+    </main>
+
+    <script type="module" src="static/script.js"></script>
+</body>
+
+</html>

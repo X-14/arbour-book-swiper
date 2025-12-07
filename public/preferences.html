@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reading Preferences</title>
+
+    <!-- Main Theme -->
+    <link rel="stylesheet" href="static/css/arbour.css">
+
+    <!-- Preferences Logic -->
+    <script type="module" src="static/js/preferences.js"></script>
+</head>
+
+<body>
+
+    <header class="brand">
+        <div class="brand__inner">
+            <h1>Arbour Book Recommender</h1>
+            <p>Set your preferences so we can recommend books you'll love.</p>
+        </div>
+    </header>
+
+    <main>
+        <div class="container">
+            <h2 class="card__title">Your Reading Preferences</h2>
+
+            <form id="prefForm">
+
+                <!-- AGE -->
+                <div class="section">
+                    <label for="age">Your Age Range</label>
+                    <select id="age" required>
+                        <option value="">Choose one...</option>
+                        <option>Under 12</option>
+                        <option>13 - 17</option>
+                        <option>18 - 25</option>
+                        <option>26 - 40</option>
+                        <option>40+</option>
+                    </select>
+                </div>
+
+                <!-- GENRES -->
+                <div class="section">
+                    <label>Select a maximum of 3 genres of preference</label>
+                    <small style="color:#555; display:block; margin-bottom:10px;">(We use these to personalise your
+                        recommendations)</small>
+
+                    <div class="options">
+                        <label><input type="checkbox" name="genre" value="Fantasy"> Fantasy</label>
+                        <label><input type="checkbox" name="genre" value="Mystery"> Mystery</label>
+                        <label><input type="checkbox" name="genre" value="Romance"> Romance</label>
+                        <label><input type="checkbox" name="genre" value="Sci-Fi"> Sci-Fi</label>
+                        <label><input type="checkbox" name="genre" value="Thriller"> Thriller</label>
+                        <label><input type="checkbox" name="genre" value="Self-Help"> Self-Help</label>
+                        <label><input type="checkbox" name="genre" value="Non-Fiction"> Non-Fiction</label>
+                    </div>
+                </div>
+
+                <!-- READING FREQUENCY -->
+                <div class="section">
+                    <label>How Often Do You Read?</label>
+                    <div class="options">
+                        <label><input type="radio" name="frequency" value="Daily" required> Daily</label>
+                        <label><input type="radio" name="frequency" value="Weekly"> Weekly</label>
+                        <label><input type="radio" name="frequency" value="Monthly"> Monthly</label>
+                        <label><input type="radio" name="frequency" value="Rarely"> Rarely</label>
+                    </div>
+                </div>
+
+                <!-- SUBMIT -->
+                <button type="submit">Save Preferences</button>
+
+            </form>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <p>© <span id="year"></span> Arbour Book Recommender</p>
+    </footer>
+
+    <script>
+        document.getElementById("year").textContent = new Date().getFullYear();
+    </script>
+
+</body>
+
+</html>

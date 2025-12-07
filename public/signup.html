@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Arbour Book Recommender — Sign Up</title>
+
+    <link rel="stylesheet" href="static/css/arbour.css" />
+    <script type="module" src="static/js/signup.js" defer></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+</head>
+
+<body>
+
+    <header class="brand">
+        <div class="brand__inner">
+            <h1>Arbour Book Recommender</h1>
+            <p>Join us — discover books you'll love.</p>
+        </div>
+    </header>
+
+    <main class="auth">
+        <section class="card">
+            <div style="text-align: center;">
+                <h2 class="card__title">Create Account</h2>
+            </div>
+
+            <button id="googleSignup" class="btn">
+                <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="24"
+                    style="margin-right: 10px;">
+                Sign up with Google
+            </button>
+
+            <p class="muted" style="margin-top:20px;">
+                Already have an account?
+                <a class="link" href="/">Sign in</a>
+            </p>
+
+        </section>
+    </main>
+
+    <footer class="footer">
+        <p>© <span id="year"></span> Arbour Book Recommender</p>
+    </footer>
+
+</body>
+
+</html>

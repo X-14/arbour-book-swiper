@@ -1,0 +1,415 @@
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                                                                              ║
+║   🚀 DEPLOY YOUR WEBSITE TO PYTHONANYWHERE - NO GITHUB NEEDED! 🚀          ║
+║                                                                              ║
+║                           COMPLETE INSTRUCTIONS                              ║
+║                                                                              ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+📦 PREPARATION: COMPLETE ✅
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+I've created a ZIP file ready for upload!
+
+📍 Location: /Users/xavierjudge/Desktop/arbour_book_swiper_pythonanywhere.zip
+📊 Size: 49 MB
+
+This ZIP contains everything you need:
+  ✅ app.py (your Flask application)
+  ✅ firebase_dal.py (Firebase integration)
+  ✅ train_model.py (ML model training)
+  ✅ requirements.txt (dependencies)
+  ✅ serviceAccountKey.json (Firebase credentials)
+  ✅ models/ (AI models - 2 files)
+  ✅ templates/ (all HTML pages)
+  ✅ static/ (CSS, JavaScript, images)
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                           DEPLOYMENT STEPS                                   ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ STEP 1: CREATE PYTHONANYWHERE ACCOUNT (2 minutes)                           │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+1.1 Open your browser and go to:
+    👉 https://www.pythonanywhere.com/registration/register/beginner/
+
+1.2 Fill in the registration form:
+    • Username: _____________ (remember this! It will be your URL)
+    • Email: _____________
+    • Password: _____________
+    
+    Your website will be at: https://[username].pythonanywhere.com
+
+1.3 Click "Register"
+
+1.4 Check your email and confirm your account
+
+1.5 Log in to PythonAnywhere
+
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ STEP 2: UPLOAD YOUR ZIP FILE (3 minutes)                                    │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+2.1 In PythonAnywhere dashboard, click the "FILES" tab at the top
+
+2.2 You'll see a file browser starting at: /home/yourusername/
+
+2.3 Upload your ZIP file:
+    • Look for the "Upload a file" button
+    • Click "Choose File"
+    • Navigate to your Desktop
+    • Select: arbour_book_swiper_pythonanywhere.zip
+    • Click "Upload"
+    
+2.4 Wait for upload to complete (may take 2-3 minutes due to 49MB size)
+
+2.5 Once uploaded, you'll see the ZIP file listed
+
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ STEP 3: EXTRACT THE ZIP FILE (1 minute)                                     │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+3.1 Click "Consoles" tab at the top
+
+3.2 Under "Start a new console", click "Bash"
+
+3.3 A terminal window will open. Type these commands:
+
+    cd ~
+    unzip arbour_book_swiper_pythonanywhere.zip -d arbour_book_swiper
+    ls -la arbour_book_swiper
+
+3.4 You should see all your files listed!
+
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ STEP 4: INSTALL DEPENDENCIES (3 minutes)                                    │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+4.1 In the same Bash console, run:
+
+    cd ~/arbour_book_swiper
+    python3.10 -m venv venv
+    source venv/bin/activate
+
+4.2 Your prompt should now show (venv) at the start
+
+4.3 Install all required packages:
+
+    pip install flask firebase-admin pandas numpy joblib scikit-learn
+
+4.4 Wait for installation (2-3 minutes)
+
+4.5 Verify installation:
+
+    pip list
+
+    You should see Flask, pandas, numpy, etc. listed
+
+4.6 Keep this console window open!
+
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ STEP 5: CREATE WEB APP (2 minutes)                                          │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+5.1 Click the "WEB" tab at the top
+
+5.2 Click the big button "Add a new web app"
+
+5.3 Click "Next" on the domain confirmation
+
+5.4 Select Python Web Framework: Choose "Flask"
+
+5.5 Select Python version: Choose "Python 3.10"
+
+5.6 Path to Python file: Enter this EXACTLY:
+    /home/yourusername/arbour_book_swiper/app.py
+    
+    ⚠️ Replace 'yourusername' with YOUR actual username!
+
+5.7 Click "Next" through the remaining screens
+
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ STEP 6: CONFIGURE WSGI FILE (3 minutes) - MOST IMPORTANT STEP!              │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+6.1 You're now on the "Web" configuration page
+
+6.2 Scroll down to the "Code" section
+
+6.3 Click on the link that says "WSGI configuration file:"
+    It will look like: /var/www/yourusername_pythonanywhere_com_wsgi.py
+
+6.4 A text editor will open with some default code
+
+6.5 DELETE ALL THE EXISTING CODE IN THE FILE
+
+6.6 Copy and paste this EXACT code:
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ import sys                                                                  │
+│ import os                                                                   │
+│                                                                             │
+│ # ⚠️ REPLACE 'yourusername' with your actual PythonAnywhere username       │
+│                                                                             │
+│ # Add your project directory to the sys.path                               │
+│ project_home = '/home/yourusername/arbour_book_swiper'                     │
+│ if project_home not in sys.path:                                           │
+│     sys.path = [project_home] + sys.path                                   │
+│                                                                             │
+│ # Set environment variables                                                │
+│ os.environ['PYTHONPATH'] = project_home                                    │
+│                                                                             │
+│ # Activate virtual environment                                             │
+│ activate_this = '/home/yourusername/arbour_book_swiper/venv/bin/activate_this.py' │
+│ if os.path.exists(activate_this):                                          │
+│     with open(activate_this) as file_:                                     │
+│         exec(file_.read(), dict(__file__=activate_this))                   │
+│                                                                             │
+│ # Import your Flask app                                                    │
+│ from app import app as application                                         │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+6.7 ⚠️ CRITICAL: Replace 'yourusername' with YOUR actual username in 3 places:
+    • Line 6: project_home = '/home/YOUR_USERNAME/arbour_book_swiper'
+    • Line 13: activate_this = '/home/YOUR_USERNAME/arbour_book_swiper/...'
+
+6.8 Click "Save" button at the top right
+
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ STEP 7: CONFIGURE VIRTUAL ENVIRONMENT (1 minute)                            │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+7.1 Go back to the "Web" tab (if not already there)
+
+7.2 Scroll down to "Virtualenv" section
+
+7.3 Click "Enter path to a virtualenv, if desired"
+
+7.4 Enter this path:
+    /home/yourusername/arbour_book_swiper/venv
+    
+    ⚠️ Replace 'yourusername' with YOUR actual username!
+
+7.5 Click the blue checkmark to save
+
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ STEP 8: CONFIGURE STATIC FILES (2 minutes)                                  │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+8.1 Still in the "Web" tab, scroll down to "Static files" section
+
+8.2 You'll see "URL" and "Directory" input fields
+
+8.3 Add the first static mapping:
+    • URL: /static/
+    • Directory: /home/yourusername/arbour_book_swiper/static/
+    • Click the checkmark
+
+8.4 Click "Enter URL" to add another mapping:
+    • URL: /models/
+    • Directory: /home/yourusername/arbour_book_swiper/models/
+    • Click the checkmark
+
+    ⚠️ Replace 'yourusername' in BOTH directories!
+
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ STEP 9: RELOAD YOUR WEB APP (1 minute)                                      │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+9.1 Scroll to the very TOP of the "Web" tab
+
+9.2 You'll see a big green button that says "Reload yourusername.pythonanywhere.com"
+
+9.3 Click "RELOAD"
+
+9.4 Wait 10-20 seconds for the app to restart
+
+9.5 Look for a green success message
+
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ STEP 10: TEST YOUR WEBSITE! 🎉                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+10.1 At the top of the "Web" tab, you'll see your website URL:
+     https://yourusername.pythonanywhere.com
+
+10.2 Click on the link
+
+10.3 Your Arbour Book Swiper website should load!
+
+10.4 Test the main features:
+     • Homepage loads
+     • Can create account / login
+     • Can set preferences
+     • Book recommendations work
+     • Swiping works
+     • Liked books page works
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                              TROUBLESHOOTING                                 ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+❌ PROBLEM: "Something went wrong" or blank page
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅ SOLUTION:
+1. Go to "Web" tab
+2. Scroll to "Log files" section
+3. Click "Error log"
+4. Look for the error message
+5. Common fixes:
+   • Wrong username in WSGI file paths
+   • Virtual environment path incorrect
+   • Missing dependencies
+
+
+❌ PROBLEM: "ImportError: No module named 'flask'"
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅ SOLUTION:
+1. Go to "Consoles" tab
+2. Open your Bash console (or start a new one)
+3. Run:
+   cd ~/arbour_book_swiper
+   source venv/bin/activate
+   pip install flask firebase-admin pandas numpy joblib scikit-learn
+4. Wait for installation
+5. Go to "Web" tab and click "Reload"
+
+
+❌ PROBLEM: "Error loading model files"
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅ SOLUTION:
+1. Go to "Files" tab
+2. Navigate to: /home/yourusername/arbour_book_swiper/models/
+3. Verify these files exist:
+   • book_data_processed.joblib
+   • similarity_matrix.joblib
+4. If missing, re-upload the ZIP and extract again
+
+
+❌ PROBLEM: Static files (CSS/JS) not loading
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅ SOLUTION:
+1. Go to "Web" tab
+2. Scroll to "Static files" section
+3. Verify mappings:
+   • /static/ → /home/yourusername/arbour_book_swiper/static/
+   • /models/ → /home/yourusername/arbour_book_swiper/models/
+4. Make sure username is correct
+5. Click "Reload"
+
+
+❌ PROBLEM: Firebase not working / Can't login
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅ SOLUTION:
+1. Go to "Files" tab
+2. Navigate to: /home/yourusername/arbour_book_swiper/
+3. Verify serviceAccountKey.json exists
+4. Check error log for Firebase-specific errors
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                          UPDATING YOUR WEBSITE                               ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+When you make changes to your code:
+
+1. Upload the changed file via "Files" tab
+   • Click on the folder
+   • Click "Upload a file"
+   • Select your updated file
+   • Overwrite the old one
+
+2. Go to "Web" tab
+
+3. Click "Reload" button
+
+4. Test your changes
+
+OR use the Bash console:
+1. "Consoles" → Bash
+2. cd ~/arbour_book_swiper
+3. Edit file with: nano app.py
+4. Make changes, Ctrl+X to save
+5. Go to "Web" tab → "Reload"
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                            IMPORTANT NOTES                                   ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+✅ FREE TIER FEATURES:
+   • ✅ Your site runs 24/7 (no sleep!)
+   • ✅ 512 MB disk space (you're using ~50MB)
+   • ✅ 1 web app
+   • ✅ Free subdomain: yourusername.pythonanywhere.com
+   • ✅ HTTPS included!
+
+❌ FREE TIER LIMITATIONS:
+   • ❌ Can't use custom domain (e.g., arbourbookswiper.com)
+   • ❌ Limited CPU/bandwidth
+   • ❌ Only outbound HTTPS to whitelisted sites
+   • ❌ Task scheduling limited
+
+💡 PRO TIPS:
+   • Bookmark your error log for quick debugging
+   • Use Bash console to test commands before editing files
+   • Always click "Reload" after making changes
+   • Check "Server log" to see visitor traffic
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                              SUCCESS CHECKLIST                               ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+Before considering deployment complete, verify:
+
+□ Account created on PythonAnywhere
+□ ZIP file uploaded successfully
+□ Files extracted to ~/arbour_book_swiper/
+□ Virtual environment created
+□ Dependencies installed (Flask, pandas, etc.)
+□ Web app created
+□ WSGI file configured with correct username
+□ Virtual environment path set
+□ Static files mapped correctly
+□ Web app reloaded
+□ Can access site at https://yourusername.pythonanywhere.com
+□ Homepage loads correctly
+□ Login/signup works
+□ Preferences page works
+□ Recommendation engine works
+□ Swiping functionality works
+□ Liked books page works
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                                  DONE! 🎉                                    ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+Your website is now LIVE at:
+👉 https://yourusername.pythonanywhere.com
+
+Share it with your friends!
+
+Need help? Check:
+• PythonAnywhere Help: https://help.pythonanywhere.com
+• Forums: https://www.pythonanywhere.com/forums/
+• Or check the error logs in the Web tab
+
+Good luck! 🚀📚
+
+
+═══════════════════════════════════════════════════════════════════════════════
