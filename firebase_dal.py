@@ -8,18 +8,32 @@ import os
 
 # --- INITIALIZE FIREBASE ---
 try:
-    # Use absolute path relative to this script
-    base_dir = os.path.dirname(os.path.abspath(__file__))
-    key_path = os.path.join(base_dir, "serviceAccountKey.json")
+    # Try to load from environment variable first (for Render deployment)
+    firebase_creds = os.getenv('FIREBASE_CREDENTIALS_JSON')
     
-    cred = credentials.Certificate(key_path)
+    if firebase_creds:
+        # Use credentials from environment variable
+        import json
+        cred_dict = json.loads(firebase_creds)
+        cred = credentials.Certificate(cred_dict)
+        print("Firebase credentials loaded from environment variable.")
+    else:
+        # Fallback to local file (for local development)
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        key_path = os.path.join(base_dir, "serviceAccountKey.json")
+        cred = credentials.Certificate(key_path)
+        print(f"Firebase credentials loaded from file: {key_path}")
+    
     # Check if app is already initialized to avoid re-initialization error
     if not firebase_admin._apps:
         firebase_admin.initialize_app(cred)
     db = firestore.client()
     print("Firebase connected successfully.")
 except Exception as e:
-    print(f"FATAL ERROR: Failed to connect to Firebase. Ensure 'serviceAccountKey.json' is present at {key_path}. Error: {e}")
+    print(f"FATAL ERROR: Failed to connect to Firebase. Error: {e}")
+    print("Ensure either:")
+    print("  1. Environment variable FIREBASE_CREDENTIALS_JSON is set, OR")
+    print("  2. File 'serviceAccountKey.json' exists in the project directory")
     sys.exit(1) 
 
 # --- FIREBASE DATA FUNCTIONS ---
