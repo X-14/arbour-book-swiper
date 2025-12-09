@@ -7,7 +7,7 @@ import numpy as np
 import sys
 import os
 
-from firebase_dal import get_user_swipes, add_user_swipe, get_user_preferences, get_user_liked_book_ids, save_user_preferences
+from firebase_dal import get_user_swipes, add_user_swipe, get_user_preferences, get_user_liked_book_ids, save_user_preferences, get_user_disliked_book_ids
 
 # --- CONFIGURATION ---
 app = Flask(__name__)
@@ -78,11 +78,15 @@ def get_recommendations_sorted_by_preference(user_genres, history_list, limit=10
     
     return all_scores[:limit]
 
-def get_recommendation_from_model(current_book_id, history_list, user_genres=None):
+def get_recommendation_from_model(current_book_id, history_list, user_genres=None, liked_book_ids=None, disliked_book_ids=None):
     """
     Finds the next unread book.
-    If user_genres provided, it incorporates preference-based scoring.
-    Otherwise, uses pure content similarity.
+    Incorporates:
+    - User Genre Preferences
+    - Content Similarity (Description/Title)
+    - Liked Authors (Boost)
+    - Series/Title Matching (Boost)
+    - Dislikes (Penalty)
     """
     current_book_id = str(current_book_id)
     
@@ -92,56 +96,95 @@ def get_recommendation_from_model(current_book_id, history_list, user_genres=Non
     idx = BOOK_DATA.index.get_loc(current_book_id)
     sim_scores = list(enumerate(COSINE_SIM[idx]))
     
-    # If we have user preferences, combine similarity with preference score
-    if user_genres:
-        enhanced_scores = []
-        for i, content_sim in sim_scores:
-            rec_id = BOOK_DATA.index[i]
+    # Pre-process liked data for fast lookup
+    liked_authors = set()
+    liked_titles = []
+    if liked_book_ids:
+        # Filter valid IDs to avoid errors
+        valid_ids = [bid for bid in liked_book_ids if bid in BOOK_DATA.index]
+        if valid_ids:
+            liked_authors = set(BOOK_DATA.loc[valid_ids]['author'].fillna('').str.lower().tolist())
+            liked_titles = BOOK_DATA.loc[valid_ids]['title'].fillna('').str.lower().tolist()
             
-            # Skip current book and already swiped books
-            if str(rec_id) in history_list or i == idx:
-                continue
-            
-            book = BOOK_DATA.loc[rec_id]
+    # Pre-process disliked data
+    disliked_authors = set()
+    disliked_titles = []
+    if disliked_book_ids:
+        valid_bad_ids = [bid for bid in disliked_book_ids if bid in BOOK_DATA.index]
+        if valid_bad_ids:
+            disliked_authors = set(BOOK_DATA.loc[valid_bad_ids]['author'].fillna('').str.lower().tolist())
+            disliked_titles = BOOK_DATA.loc[valid_bad_ids]['title'].fillna('').str.lower().tolist()
+
+    # Enhanced Scoring Logic
+    enhanced_scores = []
+    
+    # We'll stick to top 500 similar books for performance, or all if dataset is small
+    # Sorting by raw similarity first helps performance
+    sim_scores = sorted(sim_scores, key=lambda x: x[1], reverse=True)[:500]
+
+    for i, content_sim in sim_scores:
+        rec_id = BOOK_DATA.index[i]
+        
+        # Skip current book and already swiped books
+        if str(rec_id) in history_list or i == idx:
+            continue
+        
+        book = BOOK_DATA.loc[rec_id]
+        
+        # 1. Base Score: Content Similarity (Weight: 40%)
+        score = content_sim * 0.4
+        
+        # 2. Preference Score: Genre Match (Weight: 40%)
+        if user_genres:
             genre_score = calculate_preference_score(book.get('genres', ''), user_genres)
-            
-            # Combined score: 50% content similarity + 50% genre preference
-            combined = (content_sim * 0.5) + (genre_score * 0.5)
-            enhanced_scores.append((i, rec_id, combined))
+            score += genre_score * 0.4
         
-        # Sort by combined score
-        enhanced_scores.sort(key=lambda x: x[2], reverse=True)
-        
-        if enhanced_scores:
-            i, rec_id, score = enhanced_scores[0]
-            recommended_book = BOOK_DATA.loc[rec_id]
+        # 3. Boost: Liked Author (+10%) - REDUCED FROM 20%
+        book_author = book.get('author', '').lower()
+        if book_author in liked_authors:
+            score += 0.1
             
-            return {
-                'book_id': str(rec_id),
-                'title': recommended_book['title'],
-                'description': recommended_book['description'],
-                'image_url': recommended_book['image_url'],
-                'score': float(score * 100),  # Convert to percentage
-                'author': recommended_book.get('author', 'Unknown Author')
-            }
-    else:
-        # Pure similarity-based recommendation (fallback)
-        sim_scores = sorted(sim_scores, key=lambda x: x[1], reverse=True)
-        
-        for i, score in sim_scores[1:]:
-            rec_id = BOOK_DATA.index[i]
+        # 4. Boost: Series/Title Similarity (+15%)
+        # Simple heuristic: if a liked title is contained in this title (or vice versa) 
+        # and length is substantial (avoid matching "The")
+        title_lower = book['title'].lower()
+        if len(title_lower) > 5:
+            for l_title in liked_titles:
+                if len(l_title) > 5 and (l_title in title_lower or title_lower in l_title):
+                    score += 0.15
+                    break
+                    
+        # 5. PENALTY: Disliked Author (-15%)
+        if book_author in disliked_authors:
+            score -= 0.15
             
-            if str(rec_id) not in history_list:
-                recommended_book = BOOK_DATA.loc[rec_id]
-                
-                return {
-                    'book_id': str(rec_id),
-                    'title': recommended_book['title'],
-                    'description': recommended_book['description'],
-                    'image_url': recommended_book['image_url'],
-                    'score': float(score * 100),
-                    'author': recommended_book.get('author', 'Unknown Author')
-                }
+        # 6. PENALTY: Similar to Disliked Title (-10%)
+        if len(title_lower) > 5:
+            for d_title in disliked_titles:
+                 if len(d_title) > 5 and (d_title in title_lower or title_lower in d_title):
+                    score -= 0.10
+                    break
+                    
+        enhanced_scores.append((rec_id, score))
+    
+    # Sort by final enhanced score
+    enhanced_scores.sort(key=lambda x: x[1], reverse=True)
+    
+    if enhanced_scores:
+        rec_id, score = enhanced_scores[0]
+        recommended_book = BOOK_DATA.loc[rec_id]
+        
+        # Cap score at 100% for display and ensure it's not negative
+        final_score = max(0.0, min(score * 100, 100.0))
+        
+        return {
+            'book_id': str(rec_id),
+            'title': recommended_book['title'],
+            'description': recommended_book['description'],
+            'image_url': recommended_book['image_url'],
+            'score': final_score,
+            'author': recommended_book.get('author', 'Unknown Author')
+        }
     
     return {'book_id': 'DONE', 'title': 'No More Recommendations!', 'description': 'You have swiped all related books.', 'image_url': '', 'score': 0}
 
@@ -150,6 +193,8 @@ def get_initial_book(user_genres, history_list):
     Finds the best starting book based on user preferences.
     Books are sorted by compatibility with user's genre preferences.
     """
+    # NOTE: Does not currently use liked_books for the very first book to keep it fast/simple,
+    # but subsequent swipes will use the full logic.
     if user_genres:
         # Get all books sorted by preference match
         sorted_recommendations = get_recommendations_sorted_by_preference(user_genres, history_list)
@@ -269,8 +314,14 @@ def handle_swipe():
     user_prefs = get_user_preferences(user_id)
     user_genres = user_prefs.get('genres', []) if user_prefs else []
 
-    # 4. AI: Get next recommendation (with user preferences)
-    next_book_data = get_recommendation_from_model(current_book_id, history_list, user_genres)
+    # 4. GET LIKED BOOKS (for Author/Series matching)
+    liked_book_ids = get_user_liked_book_ids(user_id)
+    
+    # 5. GET DISLIKED BOOKS (for Penalties)
+    disliked_book_ids = get_user_disliked_book_ids(user_id)
+
+    # 6. AI: Get next recommendation
+    next_book_data = get_recommendation_from_model(current_book_id, history_list, user_genres, liked_book_ids, disliked_book_ids)
     
     return jsonify(next_book_data), 200
 
@@ -288,6 +339,10 @@ def get_liked_books():
     if not user_id:
         return jsonify({'error': 'User ID required'}), 400
     
+    # Get user preferences for scoring
+    user_prefs = get_user_preferences(user_id)
+    user_genres = user_prefs.get('genres', []) if user_prefs else []
+    
     # Get liked book IDs
     liked_ids = get_user_liked_book_ids(user_id)
     
@@ -296,12 +351,36 @@ def get_liked_books():
         # Look up in BOOK_DATA
         if str(book_id) in BOOK_DATA.index:
             book = BOOK_DATA.loc[str(book_id)]
+            
+            # Calculate score if user has preferences
+            score_display = "N/A"
+            if user_genres:
+                # Same logic as recommendation engine to ensure consistency
+                
+                # 1. Base Score: Content Similarity (approximate using average)
+                idx = BOOK_DATA.index.get_loc(str(book_id))
+                avg_similarity = COSINE_SIM[idx].mean()
+                score = avg_similarity * 0.4
+                
+                # 2. Preference Score: Genre Match
+                genre_score = calculate_preference_score(book.get('genres', ''), user_genres)
+                score += genre_score * 0.4
+                
+                # 3. Boost: Liked Author (Self-match doesn't count, but we check if OTHER liked books share author)
+                # To be accurate, we'd need to check against OTHER liked books, but for "Match %" of a book 
+                # you ALREADY liked, it implies high match.
+                # Simplified: If it matches genres well, it gets high score. 
+                # We'll just use the base metric for display consistency.
+                
+                score_display = f"{min(score * 100 * 1.5, 100.0):.1f}% Match" # 1.5x multiplier to normalize to 100 scale visually
+            
             liked_books.append({
                 'book_id': str(book_id),
                 'title': book['title'],
                 'author': book.get('author', 'Unknown'),
                 'image_url': book['image_url'],
-                'description': book['description']
+                'description': book['description'],
+                'score': score_display
             })
             
     return jsonify(liked_books), 200

@@ -106,6 +106,13 @@ def get_user_liked_book_ids(user_id):
     
     return [swipe.to_dict()['book_id'] for swipe in swipes]
 
+def get_user_disliked_book_ids(user_id):
+    """Fetches a list of book_ids that the user has DISLIKED."""
+    swipes_ref = db.collection('swipes').where('user_id', '==', user_id).where('action', '==', 'dislike')
+    swipes = swipes_ref.stream()
+    
+    return [swipe.to_dict()['book_id'] for swipe in swipes]
+
 def save_user_preferences(user_id, age, genres, frequency):
     """Saves or updates user preferences in the 'users' collection."""
     user_ref = db.collection('users').document(user_id)

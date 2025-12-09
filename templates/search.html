@@ -18,6 +18,7 @@
             <div class="nav-bar">
                 <a href="/recommendation">Swipe</a>
                 <a href="/liked">Liked Books</a>
+                <a href="/preferences">Preferences</a>
                 <a href="/search" class="active">Search</a>
                 <a href="#" id="logoutBtn" style="color: #ff8a80;">Logout</a>
             </div>
@@ -49,9 +50,11 @@
 
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
+        let currentUser = null;
 
         onAuthStateChanged(auth, (user) => {
             if (user) {
+                currentUser = user;
                 document.querySelector('a[href="/recommendation"]').href = `/recommendation?user_id=${user.uid}`;
             } else {
                 window.location.href = "/";
@@ -65,6 +68,46 @@
         const searchBtn = document.getElementById("searchBtn");
         const searchInput = document.getElementById("searchInput");
         const resultsDiv = document.getElementById("results");
+
+        // Make function available globally for button onclick
+        window.handleLike = async (bookId) => {
+            if (!currentUser) return;
+
+            try {
+                const btn = document.getElementById(`btn-${bookId}`);
+                if (btn) {
+                    btn.disabled = true;
+                    btn.textContent = "Liking...";
+                }
+
+                const response = await fetch('/api/swipe', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        book_id: bookId,
+                        action: 'like',
+                        user_id: currentUser.uid
+                    })
+                });
+
+                if (response.ok) {
+                    if (btn) {
+                        btn.textContent = "Liked!";
+                        btn.style.backgroundColor = "#4CAF50";
+                        btn.style.color = "white";
+                    }
+                } else {
+                    alert("Failed to like book.");
+                    if (btn) {
+                        btn.disabled = false;
+                        btn.textContent = "Like";
+                    }
+                }
+            } catch (err) {
+                console.error(err);
+                alert("Error liking book.");
+            }
+        };
 
         async function performSearch() {
             const query = searchInput.value.trim();
@@ -82,12 +125,19 @@
                 }
 
                 resultsDiv.innerHTML = books.map(book => `
-                    <div class="result-item">
+                    <div class="result-item" style="position: relative;">
                         <img src="${book.image_url}" alt="${book.title}">
                         <div class="result-info">
                             <h3>${book.title}</h3>
                             <p><strong>Author:</strong> ${book.author}</p>
                             <p>${book.description.substring(0, 150)}...</p>
+                            <button 
+                                id="btn-${book.book_id}"
+                                onclick="window.handleLike('${book.book_id}')"
+                                class="btn" 
+                                style="margin-top: 10px; padding: 5px 15px; font-size: 0.9rem; width: auto;">
+                                Like Book
+                            </button>
                         </div>
                     </div>
                 `).join("");
