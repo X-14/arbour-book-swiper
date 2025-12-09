@@ -7,7 +7,7 @@ import numpy as np
 import sys
 import os
 
-from firebase_dal import get_user_swipes, add_user_swipe, get_user_preferences, get_user_liked_book_ids
+from firebase_dal import get_user_swipes, add_user_swipe, get_user_preferences, get_user_liked_book_ids, save_user_preferences
 
 # --- CONFIGURATION ---
 app = Flask(__name__)
@@ -30,60 +30,143 @@ except Exception as e:
     sys.exit(1)
 
 # --- AI RECOMMENDATION LOGIC ---
-def get_recommendation_from_model(current_book_id, history_list):
-    """Finds the next unread book most similar to the current one."""
-    
-    current_book_id = str(current_book_id)
-    if current_book_id not in BOOK_DATA.index:
-        current_book_id = BOOK_DATA.index[0] 
 
+def calculate_preference_score(book_genres, user_genres):
+    """Calculate how well a book's genres match the user's preferences (0-1)."""
+    if not user_genres or not book_genres:
+        return 0.0
+    
+    # Normalize both to lowercase for comparison
+    user_genres_lower = [g.lower() for g in user_genres]
+    book_genres_str = str(book_genres).lower()
+    
+    # Count how many user genres are in the book
+    matches = sum(1 for genre in user_genres_lower if genre in book_genres_str)
+    
+    # Return ratio of matched genres (e.g., 2 out of 3 = 0.67)
+    return matches / len(user_genres)
+
+def get_recommendations_sorted_by_preference(user_genres, history_list, limit=100):
+    """
+    Get books sorted by compatibility with user preferences.
+    Returns a sorted list of (book_id, combined_score) tuples.
+    """
+    all_scores = []
+    
+    for book_id in BOOK_DATA.index:
+        # Skip already swiped books
+        if str(book_id) in history_list:
+            continue
+        
+        book = BOOK_DATA.loc[book_id]
+        
+        # Calculate genre preference score (0-1)
+        genre_score = calculate_preference_score(book.get('genres', ''), user_genres)
+        
+        # Get the average content similarity to all books (baseline relevance)
+        idx = BOOK_DATA.index.get_loc(book_id)
+        avg_similarity = COSINE_SIM[idx].mean()
+        
+        # Combined score: 70% genre match + 30% content similarity
+        # This ensures books matching user preferences are prioritized
+        combined_score = (genre_score * 0.7) + (avg_similarity * 0.3)
+        
+        all_scores.append((str(book_id), combined_score))
+    
+    # Sort by combined score (highest first)
+    all_scores.sort(key=lambda x: x[1], reverse=True)
+    
+    return all_scores[:limit]
+
+def get_recommendation_from_model(current_book_id, history_list, user_genres=None):
+    """
+    Finds the next unread book.
+    If user_genres provided, it incorporates preference-based scoring.
+    Otherwise, uses pure content similarity.
+    """
+    current_book_id = str(current_book_id)
+    
+    if current_book_id not in BOOK_DATA.index:
+        current_book_id = BOOK_DATA.index[0]
+    
     idx = BOOK_DATA.index.get_loc(current_book_id)
     sim_scores = list(enumerate(COSINE_SIM[idx]))
-    sim_scores = sorted(sim_scores, key=lambda x: x[1], reverse=True)
     
-    for i, score in sim_scores[1:]: 
-        rec_id = BOOK_DATA.index[i]
+    # If we have user preferences, combine similarity with preference score
+    if user_genres:
+        enhanced_scores = []
+        for i, content_sim in sim_scores:
+            rec_id = BOOK_DATA.index[i]
+            
+            # Skip current book and already swiped books
+            if str(rec_id) in history_list or i == idx:
+                continue
+            
+            book = BOOK_DATA.loc[rec_id]
+            genre_score = calculate_preference_score(book.get('genres', ''), user_genres)
+            
+            # Combined score: 50% content similarity + 50% genre preference
+            combined = (content_sim * 0.5) + (genre_score * 0.5)
+            enhanced_scores.append((i, rec_id, combined))
         
-        if str(rec_id) not in history_list:
+        # Sort by combined score
+        enhanced_scores.sort(key=lambda x: x[2], reverse=True)
+        
+        if enhanced_scores:
+            i, rec_id, score = enhanced_scores[0]
             recommended_book = BOOK_DATA.loc[rec_id]
             
             return {
                 'book_id': str(rec_id),
                 'title': recommended_book['title'],
-                'description': recommended_book['description'], 
+                'description': recommended_book['description'],
                 'image_url': recommended_book['image_url'],
-                'score': float(score),
+                'score': float(score * 100),  # Convert to percentage
                 'author': recommended_book.get('author', 'Unknown Author')
             }
+    else:
+        # Pure similarity-based recommendation (fallback)
+        sim_scores = sorted(sim_scores, key=lambda x: x[1], reverse=True)
+        
+        for i, score in sim_scores[1:]:
+            rec_id = BOOK_DATA.index[i]
             
-    return {'book_id': 'DONE', 'title': 'No More Recommendations!', 'description': 'You have swiped all related books.', 'image_url': ''}, 200
+            if str(rec_id) not in history_list:
+                recommended_book = BOOK_DATA.loc[rec_id]
+                
+                return {
+                    'book_id': str(rec_id),
+                    'title': recommended_book['title'],
+                    'description': recommended_book['description'],
+                    'image_url': recommended_book['image_url'],
+                    'score': float(score * 100),
+                    'author': recommended_book.get('author', 'Unknown Author')
+                }
+    
+    return {'book_id': 'DONE', 'title': 'No More Recommendations!', 'description': 'You have swiped all related books.', 'image_url': '', 'score': 0}
 
 def get_initial_book(user_genres, history_list):
-    """Finds a starting book based on user genres."""
-    # Filter books by genre if genres are provided
+    """
+    Finds the best starting book based on user preferences.
+    Books are sorted by compatibility with user's genre preferences.
+    """
     if user_genres:
-        # This assumes BOOK_DATA has a 'genre' or similar column. 
-        # If not, we might need to rely on a fallback or search.
-        # Let's check if 'genre' exists in BOOK_DATA. 
-        # If not, we'll just return the first book not in history.
-        if 'genre' in BOOK_DATA.columns:
-             # Simple check: is any of the user's genres in the book's genre string?
-             # This is a bit loose but works for a prototype.
-             mask = BOOK_DATA['genre'].apply(lambda x: any(g.lower() in str(x).lower() for g in user_genres))
-             genre_books = BOOK_DATA[mask]
-             
-             for book_id in genre_books.index:
-                 if str(book_id) not in history_list:
-                     book = genre_books.loc[book_id]
-                     return {
-                        'book_id': str(book_id),
-                        'title': book['title'],
-                        'description': book['description'], 
-                        'image_url': book['image_url'],
-                        'score': 'Based on your preferences',
-                        'author': book.get('author', 'Unknown Author')
-                    }
-
+        # Get all books sorted by preference match
+        sorted_recommendations = get_recommendations_sorted_by_preference(user_genres, history_list)
+        
+        if sorted_recommendations:
+            best_book_id, score = sorted_recommendations[0]
+            book = BOOK_DATA.loc[best_book_id]
+            
+            return {
+                'book_id': str(best_book_id),
+                'title': book['title'],
+                'description': book['description'],
+                'image_url': book['image_url'],
+                'score': f'{score * 100:.1f}% Match',
+                'author': book.get('author', 'Unknown Author')
+            }
+    
     # Fallback: Return first book not in history
     for book_id in BOOK_DATA.index:
         if str(book_id) not in history_list:
@@ -91,13 +174,14 @@ def get_initial_book(user_genres, history_list):
             return {
                 'book_id': str(book_id),
                 'title': book['title'],
-                'description': book['description'], 
+                'description': book['description'],
                 'image_url': book['image_url'],
                 'score': 'Start Swiping',
                 'author': book.get('author', 'Unknown Author')
             }
-            
-    return {'book_id': 'DONE', 'title': 'No More Recommendations!', 'description': 'You have swiped all related books.', 'image_url': ''}, 200
+    
+    return {'book_id': 'DONE', 'title': 'No More Recommendations!', 'description': 'You have swiped all books.', 'image_url': '', 'score': 0}
+
 
 
 # --- FLASK ROUTES ---
@@ -180,9 +264,13 @@ def handle_swipe():
 
     # 2. FILTERING: Get history
     history_list = get_user_swipes(user_id)
+    
+    # 3. GET USER PREFERENCES
+    user_prefs = get_user_preferences(user_id)
+    user_genres = user_prefs.get('genres', []) if user_prefs else []
 
-    # 3. AI: Get next recommendation
-    next_book_data = get_recommendation_from_model(current_book_id, history_list)
+    # 4. AI: Get next recommendation (with user preferences)
+    next_book_data = get_recommendation_from_model(current_book_id, history_list, user_genres)
     
     return jsonify(next_book_data), 200
 
@@ -244,6 +332,24 @@ def search_books():
         })
         
     return jsonify(results), 200
+
+@app.route('/api/save_preferences', methods=['POST'])
+def save_preferences():
+    """Save or update user preferences."""
+    data = request.get_json()
+    user_id = data.get('user_id')
+    age = data.get('age')
+    genres = data.get('genres', [])
+    frequency = data.get('frequency')
+    
+    if not user_id:
+        return jsonify({'error': 'User ID required'}), 400
+    
+    try:
+        save_user_preferences(user_id, age, genres, frequency)
+        return jsonify({'success': True, 'message': 'Preferences saved successfully'}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 if __name__ == "__main__":
     app.run(debug=True, port=5001)

@@ -84,3 +84,10 @@ document.getElementById("goToRecs").addEventListener("click", () => {
     window.location.href = "/";
   }
 });
+
+// ==========================
+//   EDIT PREFERENCES BUTTON
+// ==========================
+document.getElementById("editPrefsBtn").addEventListener("click", () => {
+  window.location.href = "/preferences";
+});

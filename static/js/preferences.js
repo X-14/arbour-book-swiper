@@ -41,19 +41,39 @@ onAuthStateChanged(auth, async (user) => {
 
   currentUser = user;
 
-  // Check Firestore: If preferencesDone = true → go straight home
+  // Load existing preferences if any (for editing)
   const userRef = doc(db, "users", currentUser.uid);
   const snap = await getDoc(userRef);
 
-  if (snap.exists() && snap.data().preferencesDone === true) {
-    window.location.href = `/recommendation?user_id=${currentUser.uid}`;
+  if (snap.exists()) {
+    const userData = snap.data();
+
+    // Pre-populate form with existing data
+    if (userData.age) {
+      document.getElementById("age").value = userData.age;
+    }
+
+    if (userData.genres && userData.genres.length > 0) {
+      // Check the genre checkboxes that match user's saved genres
+      const genreCheckboxes = document.querySelectorAll("input[name='genre']");
+      genreCheckboxes.forEach(checkbox => {
+        if (userData.genres.includes(checkbox.value)) {
+          checkbox.checked = true;
+        }
+      });
+    }
+
+    if (userData.frequency) {
+      // Select the frequency radio button
+      const frequencyRadios = document.querySelectorAll("input[name='frequency']");
+      frequencyRadios.forEach(radio => {
+        if (radio.value === userData.frequency) {
+          radio.checked = true;
+        }
+      });
+    }
   }
 });
-
-// ... (skipping middle part) ...
-
-// Redirect
-window.location.href = "/home";
 
 
 // =========================

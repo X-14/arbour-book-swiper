@@ -105,3 +105,15 @@ def get_user_liked_book_ids(user_id):
     swipes = swipes_ref.stream()
     
     return [swipe.to_dict()['book_id'] for swipe in swipes]
+
+def save_user_preferences(user_id, age, genres, frequency):
+    """Saves or updates user preferences in the 'users' collection."""
+    user_ref = db.collection('users').document(user_id)
+    user_ref.set({
+        'age': age,
+        'genres': genres,
+        'frequency': frequency,
+        'preferencesDone': True,
+        'updatedAt': datetime.now()
+    }, merge=True)
+    return True
