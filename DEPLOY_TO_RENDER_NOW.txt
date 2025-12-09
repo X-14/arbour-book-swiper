@@ -1,0 +1,69 @@
+# Deploy to Render - Instructions
+
+## Your changes have been pushed to GitHub! ✅
+
+Repository: https://github.com/X-14/arbour-book-swiper
+
+## Option 1: Auto-Deploy (If Enabled)
+
+If you have auto-deploy enabled on Render:
+1. Go to https://dashboard.render.com
+2. Find your "arbour-book-swiper" service
+3. It should automatically start deploying
+4. Wait for the build to complete (usually 5-10 minutes)
+5. Check the logs to ensure no errors
+
+## Option 2: Manual Deploy
+
+If auto-deploy is NOT enabled:
+1. Go to https://dashboard.render.com
+2. Find your "arbour-book-swiper" service
+3. Click "Manual Deploy" → "Deploy latest commit"
+4. Wait for the build to complete
+5. Check the logs
+
+## Important: Model Training on Render
+
+**CRITICAL**: The AI model needs to be trained on Render!
+
+After deployment completes, you need to run the training script once:
+
+### Method 1: Using Render Shell (Recommended)
+1. In your Render dashboard, go to your service
+2. Click on "Shell" tab
+3. Run: `python train_model.py`
+4. Wait for completion (should see "Model training complete")
+
+### Method 2: Add to Build Command
+Alternatively, you can add model training to your build command in render.yaml:
+
+```yaml
+buildCommand: pip install -r requirements.txt && python train_model.py
+```
+
+This will train the model every time you deploy (slower but automatic).
+
+## Verify Deployment
+
+Once deployed and model is trained:
+1. Visit your Render URL (e.g., https://arbour-book-swiper.onrender.com)
+2. Login/Signup
+3. Set preferences (3 genres)
+4. Check that books are sorted by compatibility
+5. Test editing preferences from dashboard
+6. Verify swiping works with preference-based recommendations
+
+## Troubleshooting
+
+If you see errors:
+- Check Render logs for error messages
+- Ensure FIREBASE_CREDENTIALS_JSON environment variable is set
+- Verify the model files were created (check for models/ directory)
+- Make sure all dependencies in requirements.txt are installed
+
+## Environment Variables Needed
+
+Make sure these are set in Render:
+- `FIREBASE_CREDENTIALS_JSON` - Your Firebase service account key (as JSON string)
+
+That's it! 🚀
