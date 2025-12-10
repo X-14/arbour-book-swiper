@@ -242,7 +242,7 @@ bookInfoDiv.addEventListener("click", (e) => {
 // SEARCH OPEN LIBRARY LISTENER (SECTION 1)
 // ==============================
 searchBtn.addEventListener("click", async () => {
-    const isbn = isbnInput.value.trim();
+    const isbn = isbnInput.value.trim().replace(/-/g, "");
 
     if (!isbn) return alert("Enter or scan ISBN to search Open Library");
 
@@ -264,7 +264,7 @@ searchBtn.addEventListener("click", async () => {
 // SEARCH DATABASE LISTENER (SECTION 2)
 // ==============================
 dbSearchBtn.addEventListener("click", async () => {
-    const isbn = dbIsbnInput.value.trim();
+    const isbn = dbIsbnInput.value.trim().replace(/-/g, "");
     if (!isbn) return alert("Enter or scan ISBN to look up");
 
     dbBookInfoDiv.innerHTML = "<p>Searching database...</p>";
@@ -278,6 +278,17 @@ dbSearchBtn.addEventListener("click", async () => {
 
     currentIsbn = isbn; // Set global ISBN for delete/update functions
     displayDbForm(doc.data());
+});
+
+// ==============================
+// ENTER KEY SUPPORT
+// ==============================
+isbnInput.addEventListener("keypress", (e) => {
+    if (e.key === "Enter") searchBtn.click();
+});
+
+dbIsbnInput.addEventListener("keypress", (e) => {
+    if (e.key === "Enter") dbSearchBtn.click();
 });
 
 // ==============================
