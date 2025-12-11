@@ -401,8 +401,9 @@ def get_liked_books():
         
         raw_score = calculate_book_score(book, user_genres, liked_authors, liked_titles, avg_sim)
         
-        # Cap score at 100%
-        final_score = max(0.0, min(raw_score * 100, 100.0))
+        # ARTIFICIAL BOOST: Multiply by 2.0 to normalize visualization to a "Match%" scale users expect.
+        # Since avg_sim is low (0.1-0.3), raw scores are often 0.3-0.5. This maps them to 60-100%.
+        final_score = max(0.0, min(raw_score * 2.0 * 100, 100.0))
         
         liked_books.append({
             'book_id': str(book_id),
