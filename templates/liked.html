@@ -26,8 +26,22 @@
     </header>
 
     <main>
-        <div id="loading" style="text-align:center; margin-top:50px;">Loading your library...</div>
-        <div id="bookGrid" class="book-grid"></div>
+        <div class="container">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h2 style="margin: 0; font-size: 1.5rem;">Your Library</h2>
+                <div class="filter-controls">
+                    <label for="sortFilter" style="margin-right: 10px; font-weight: 500;">Sort by:</label>
+                    <select id="sortFilter"
+                        style="padding: 8px 12px; border-radius: 8px; border: 1px solid #ddd; background: #fff; font-family: inherit;">
+                        <option value="match">Highest Match</option>
+                        <option value="recent">Most Recent</option>
+                        <option value="alpha">A-Z</option>
+                    </select>
+                </div>
+            </div>
+            <div id="loading" style="text-align:center; margin-top:50px;">Loading your library...</div>
+            <div id="bookGrid" class="book-grid"></div>
+        </div>
     </main>
 
     <script type="module">
@@ -47,14 +61,11 @@
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
 
+        let cachedBooks = []; // Store books to allow client-side sorting
+
         onAuthStateChanged(auth, async (user) => {
             if (user) {
                 loadLikedBooks(user.uid);
-
-                // Update nav links to include user_id if needed, or just rely on auth state
-                // Actually, the recommendation page needs user_id param if accessed directly, 
-                // but our JS redirect handles it. 
-                // Let's update the Swipe link dynamically just in case.
                 document.querySelector('a[href="/recommendation"]').href = `/recommendation?user_id=${user.uid}`;
             } else {
                 window.location.href = "/";
@@ -65,32 +76,69 @@
             signOut(auth).then(() => window.location.href = "/");
         });
 
+        // Sorting Event Listener
+        document.getElementById("sortFilter").addEventListener("change", (e) => {
+            sortAndRenderBooks(e.target.value);
+        });
+
         async function loadLikedBooks(userId) {
             try {
                 const res = await fetch(`/api/liked_books?user_id=${userId}`);
-                const books = await res.json();
+                cachedBooks = await res.json(); // Store for sorting
 
-                const grid = document.getElementById("bookGrid");
                 document.getElementById("loading").style.display = "none";
 
-                if (books.length === 0) {
-                    grid.innerHTML = "<p style='text-align:center; width:100%;'>You haven't liked any books yet.</p>";
-                    return;
-                }
+                // Default sort: Most Recent (which is the reversed order they come in typically, 
+                // or we assume backend sends them in some order. Actually, backend sends them by ID usually.
+                // We'll trust the default is "Recent" if the backend sends appended list, 
+                // but actually the backend loop order isn't guaranteed to be time-based unless swiped timestamp is used.
+                // For now, we'll default to "Highest Match" as it is the most impressive view.
 
-                grid.innerHTML = books.map(book => `
-                    <div class="book-item">
-                        <img src="${book.image_url}" alt="${book.title}">
-                        <h3>${book.title}</h3>
-                        <p>${book.author}</p>
-                        <p style="color: #4CAF50; font-weight: bold; font-size: 0.9rem; margin-top: 5px;">${book.score}</p>
-                    </div>
-                `).join("");
+                sortAndRenderBooks("match");
 
             } catch (err) {
                 console.error(err);
                 document.getElementById("loading").textContent = "Error loading books.";
             }
+        }
+
+        function sortAndRenderBooks(criteria) {
+            const grid = document.getElementById("bookGrid");
+
+            if (cachedBooks.length === 0) {
+                grid.innerHTML = "<p style='text-align:center; width:100%;'>You haven't liked any books yet.</p>";
+                return;
+            }
+
+            let sortedBooks = [...cachedBooks];
+
+            if (criteria === "match") {
+                // Sort by Score (Descending) - Parse "85.5% Match"
+                sortedBooks.sort((a, b) => {
+                    const scoreA = parseFloat(a.score) || 0;
+                    const scoreB = parseFloat(b.score) || 0;
+                    return scoreB - scoreA;
+                });
+            } else if (criteria === "alpha") {
+                // Sort by Title (A-Z)
+                sortedBooks.sort((a, b) => a.title.localeCompare(b.title));
+            } else if (criteria === "recent") {
+                // Since we don't have explicit timestamps in the simplified API response yet,
+                // we will assume the original fetch order (which closely mirrors array append order) 
+                // is "Oldest First", so "Recent" is reversed.
+                // Ideally, we'd add timestamps to the API.
+                // For now, we'll reverse the original array.
+                sortedBooks.reverse();
+            }
+
+            grid.innerHTML = sortedBooks.map(book => `
+                <div class="book-item">
+                    <img src="${book.image_url}" alt="${book.title}">
+                    <h3>${book.title}</h3>
+                    <p>${book.author}</p>
+                    <p style="color: #4CAF50; font-weight: bold; font-size: 0.9rem; margin-top: 5px;">${book.score}</p>
+                </div>
+            `).join("");
         }
     </script>
 </body>
