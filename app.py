@@ -19,9 +19,13 @@ try:
     book_data_path = os.path.join(base_dir, 'models/book_data_processed.joblib')
 
     if not os.path.exists(sim_matrix_path) or not os.path.exists(book_data_path):
-        print(f"FATAL: Model files not found at {sim_matrix_path} or {book_data_path}. Run train_model.py first.")
-        sys.exit(1)
-        
+        print(f"Model files not found. Attempting to train model...")
+        import train_model
+        success = train_model.train_model()
+        if not success:
+            print("FATAL: Model training failed on startup.")
+            sys.exit(1)
+            
     COSINE_SIM = joblib.load(sim_matrix_path)
     BOOK_DATA = joblib.load(book_data_path)
     print("AI Model loaded successfully.")
