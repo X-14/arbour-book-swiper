@@ -41,6 +41,10 @@ onAuthStateChanged(auth, async (user) => {
 
   currentUser = user;
 
+  // Update nav link for Swipe
+  const navSwipe = document.getElementById("navSwipe");
+  if (navSwipe) navSwipe.href = `/recommendation?user_id=${user.uid}`;
+
   // Load existing preferences if any (for editing)
   const userRef = doc(db, "users", currentUser.uid);
   const snap = await getDoc(userRef);
@@ -140,4 +144,13 @@ document.addEventListener("DOMContentLoaded", () => {
       alert("Error saving preferences: " + err.message);
     }
   });
+});
+
+// =========================
+//  LOGOUT BUTTON
+// =========================
+document.getElementById("logoutBtn").addEventListener("click", () => {
+    import("https://www.gstatic.com/firebasejs/10.13.1/firebase-auth.js").then(({ signOut }) => {
+        signOut(auth).then(() => window.location.href = "/");
+    });
 });

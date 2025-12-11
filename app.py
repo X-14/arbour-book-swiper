@@ -441,7 +441,66 @@ def search_books():
             'description': book['description']
         })
         
-    return jsonify(results), 200
+@app.route('/api/explore', methods=['GET'])
+def explore_books():
+    """
+    Get 3 recommendations that are OUTSIDE the user's preferred genres.
+    """
+    user_id = request.args.get('user_id')
+    if not user_id:
+        return jsonify([])
+        
+    history_list = get_user_swipes(user_id)
+    user_prefs = get_user_preferences(user_id)
+    user_genres = user_prefs.get('genres', []) if user_prefs else []
+    
+    # Normalize user genres for exclusion
+    user_genres_lower = set(g.lower() for g in user_genres)
+    
+    explore_results = []
+    
+    # We want high quality books (likely popular or high similarity to avg) 
+    # but strictly NOT in the user's genre list.
+    
+    for book_id in BOOK_DATA.index:
+        if str(book_id) in history_list:
+            continue
+            
+        book = BOOK_DATA.loc[book_id]
+        book_genres_str = str(book.get('genres', '')).lower()
+        
+        # Check if book intersects with ANY user genre
+        has_overlap = any(ug in book_genres_str for ug in user_genres_lower)
+        
+        if not has_overlap:
+             # This book is "Different". 
+             # We rank by general content popularity/similarity to ensure quality.
+             idx = BOOK_DATA.index.get_loc(book_id)
+             score = COSINE_SIM[idx].mean() # Use average similarity as a proxy for "centrality/quality"
+             
+             explore_results.append((book_id, score, book))
+             
+    # Sort by score descending
+    explore_results.sort(key=lambda x: x[1], reverse=True)
+    
+    # Return top 3
+    final_output = []
+    for book_id, score, book in explore_results[:3]:
+        # Normalize score for display (similar to other endpoints)
+        # Explore scores are just raw cosine mean (0.0-1.0 typically low 0.1-0.3)
+        # We'll apply a visual boost for the user "Match" feeling.
+        display_score = f"{min(score * 3.0 * 100, 98.0):.1f}% Match" 
+        
+        final_output.append({
+            'book_id': str(book_id),
+            'title': book['title'],
+            'author': book.get('author', 'Unknown'),
+            'image_url': book['image_url'],
+            'description': book['description'],
+            'score': display_score
+        })
+        
+    return jsonify(final_output), 200
 
 @app.route('/api/save_preferences', methods=['POST'])
 def save_preferences():

@@ -18,7 +18,14 @@
   <header class="brand">
     <div class="brand__inner">
       <h1>Arbour Book Recommender</h1>
-      <p>Your Personal Dashboard</p>
+      <div class="nav-bar">
+        <a href="/home" class="active">Dashboard</a>
+        <a href="#" id="navSwipe">Swipe</a>
+        <a href="/liked">Liked Books</a>
+        <a href="/preferences">Preferences</a>
+        <a href="/search">Search</a>
+        <a href="#" id="logoutBtn" style="color: #ff8a80;">Logout</a>
+      </div>
     </div>
   </header>
 
@@ -26,7 +33,7 @@
     <div class="dashboard">
       <div class="topbar">
         <h2>Welcome Back</h2>
-        <button class="btn" id="logoutBtn" style="width: auto; background-color: #d9534f;">Log Out</button>
+        <!-- Logout button moved to nav-bar -->
       </div>
 
       <p class="user-info" id="userInfo">Loading user...</p>
@@ -41,6 +48,13 @@
         <h3 class="card__title" style="font-size: 1.4rem; border-bottom: none; margin-bottom: 1rem;">Reading Frequency
         </h3>
         <p id="freqInfo">Loading...</p>
+      </div>
+
+      <div class="card section" id="exploreContainer" style="display: none;">
+        <h3 class="card__title" style="font-size: 1.4rem; border-bottom: none; margin-bottom: 1rem;">Explore Something
+          New</h3>
+        <p style="margin-bottom: 15px; color: #666; font-size: 0.9rem;">Based on what you haven't read yet.</p>
+        <div id="exploreList"></div>
       </div>
 
       <div class="card section">
