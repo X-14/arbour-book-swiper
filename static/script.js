@@ -35,6 +35,8 @@ const animationDuration = 500; // 0.5 seconds
 
 // --- State Management ---
 let isSwiping = false; // Prevent rapid key presses from crashing the script
+let touchStartX = 0;
+let touchEndX = 0;
 
 // --- Auth Listener ---
 onAuthStateChanged(auth, (user) => {
@@ -133,7 +135,7 @@ function updateBookCard(data) {
 
 // --- Keydown Listener for Swiping (The Core Logic) ---
 document.addEventListener("keydown", (event) => {
-    console.log("Key pressed:", event.key); // DEBUG LOG
+    // console.log("Key pressed:", event.key); // DEBUG LOG
     let action = '';
     let translateX = 0;
 
@@ -187,3 +189,80 @@ document.addEventListener("keydown", (event) => {
         }, 50); // Small delay to apply 'none' before re-enabling transition
     }, animationDuration); // Wait for the animation to finish
 });
+
+// --- Touch Event Listeners for Mobile Swiping ---
+
+document.addEventListener('touchstart', (e) => {
+    if (isSwiping) return;
+    touchStartX = e.changedTouches[0].screenX;
+}, false);
+
+document.addEventListener('touchmove', (e) => {
+    if (isSwiping) return;
+    // Optional: Add specialized logic to move the card visually with the finger
+    // For now, simpler implementation: just detect the end of the swipe
+}, false);
+
+document.addEventListener('touchend', (e) => {
+    if (isSwiping) return;
+    touchEndX = e.changedTouches[0].screenX;
+    handleTouchSwipe();
+}, false);
+
+function handleTouchSwipe() {
+    const swipeThreshold = 50; // Minimum distance to be considered a swipe
+    const swipeDistance = touchEndX - touchStartX;
+
+    let action = '';
+    let translateX = 0;
+
+    if (Math.abs(swipeDistance) < swipeThreshold) return; // Not a swipe
+
+    if (swipeDistance > 0) {
+        // Swipe Right -> Like
+        action = 'like';
+        translateX = moveDistance;
+    } else {
+        // Swipe Left -> Dislike
+        action = 'dislike';
+        translateX = -moveDistance;
+    }
+
+    // Trigger visual feedback (Dry Principle: Reuse logic?)
+    // To cleanly reuse the logic inside the keydown listener, we should ideally refactor.
+    // However, I will duplicate the minimal animation logic here to ensure it works immediately 
+    // without risking breaking the existing keydown flow during this prompt turn.
+
+    isSwiping = true;
+    const indicator = (action === 'like' ? checkmark : xmark);
+
+    indicator.style.opacity = '1';
+    indicator.style.width = '200px';
+    indicator.style.height = '200px';
+
+    // Animate card
+    bookCard.style.transition = 'transform 0.5s ease-out, opacity 0.5s ease-out';
+    bookCard.style.transform = `translateX(${translateX}px) rotate(${translateX / 30}deg)`;
+    bookCard.style.opacity = '0';
+
+    // Send Data
+    sendSwipe(action);
+
+    // Reset loop
+    setTimeout(() => {
+        checkmark.style.opacity = '0';
+        xmark.style.opacity = '0';
+        checkmark.style.width = '0px';
+        checkmark.style.height = '0px';
+        xmark.style.width = '0px';
+        xmark.style.height = '0px';
+
+        bookCard.style.transition = 'none';
+        bookCard.style.transform = 'none';
+        bookCard.style.opacity = '1';
+
+        setTimeout(() => {
+            bookCard.style.transition = 'transform 0.5s ease-out, opacity 0.5s ease-out';
+        }, 50);
+    }, animationDuration);
+}

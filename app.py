@@ -333,6 +333,37 @@ def liked():
 def search():
     return render_template('search.html')
 
+def calculate_book_score(book, user_genres, liked_authors=None, liked_titles=None, avg_similarity=0.1):
+    """
+    Unified scoring function for both recommendations and liked books display.
+    """
+    # 1. Base Score (40%)
+    score = avg_similarity * 0.4
+    
+    # 2. Preference Score: Genre Match (40%)
+    if user_genres:
+        genre_score = calculate_preference_score(book.get('genres', ''), user_genres)
+        score += genre_score * 0.4
+    
+    # 3. Boost: Liked Author (15%)
+    # If the book itself is in the liked list (which it is for this page), 
+    # it naturally matches its own author, but we validly want to show that high score.
+    book_author = book.get('author', '').lower()
+    if liked_authors and book_author in liked_authors:
+        score += 0.15
+        
+    # 4. Boost: Series/Title Similarity (15%)
+    title_lower = book['title'].lower()
+    if liked_titles and len(title_lower) > 5:
+        for l_title in liked_titles:
+            # Avoid self-match comparison for exact strictness if needed, 
+            # but for "why do I like this", high score is good.
+            if len(l_title) > 5 and (l_title in title_lower or title_lower in l_title):
+                score += 0.15
+                break
+                
+    return score
+
 @app.route('/api/liked_books', methods=['GET'])
 def get_liked_books():
     user_id = request.args.get('user_id')
@@ -346,42 +377,41 @@ def get_liked_books():
     # Get liked book IDs
     liked_ids = get_user_liked_book_ids(user_id)
     
+    # Pre-process liked data for context
+    liked_authors = set()
+    liked_titles = []
+    
+    # We first need to check validity of indices
+    valid_ids = [str(bid) for bid in liked_ids if str(bid) in BOOK_DATA.index]
+    
+    if valid_ids:
+        liked_authors = set(BOOK_DATA.loc[valid_ids]['author'].fillna('').str.lower().tolist())
+        liked_titles = BOOK_DATA.loc[valid_ids]['title'].fillna('').str.lower().tolist()
+    
     liked_books = []
-    for book_id in liked_ids:
-        # Look up in BOOK_DATA
-        if str(book_id) in BOOK_DATA.index:
-            book = BOOK_DATA.loc[str(book_id)]
-            
-            # Calculate score if user has preferences
-            score_display = "N/A"
-            if user_genres:
-                # Same logic as recommendation engine to ensure consistency
-                
-                # 1. Base Score: Content Similarity (approximate using average)
-                idx = BOOK_DATA.index.get_loc(str(book_id))
-                avg_similarity = COSINE_SIM[idx].mean()
-                score = avg_similarity * 0.4
-                
-                # 2. Preference Score: Genre Match
-                genre_score = calculate_preference_score(book.get('genres', ''), user_genres)
-                score += genre_score * 0.4
-                
-                # 3. Boost: Liked Author (Self-match doesn't count, but we check if OTHER liked books share author)
-                # To be accurate, we'd need to check against OTHER liked books, but for "Match %" of a book 
-                # you ALREADY liked, it implies high match.
-                # Simplified: If it matches genres well, it gets high score. 
-                # We'll just use the base metric for display consistency.
-                
-                score_display = f"{min(score * 100 * 1.5, 100.0):.1f}% Match" # 1.5x multiplier to normalize to 100 scale visually
-            
-            liked_books.append({
-                'book_id': str(book_id),
-                'title': book['title'],
-                'author': book.get('author', 'Unknown'),
-                'image_url': book['image_url'],
-                'description': book['description'],
-                'score': score_display
-            })
+    for book_id in valid_ids:
+        book = BOOK_DATA.loc[book_id]
+        
+        # Calculate score consistent with recommendation engine
+        # We use a default avg_similarity since calculating it per book is expensive O(N^2)
+        # But we can grab the pre-calculated row mean if available, or just estimate.
+        # For accuracy, we'll try to get the row mean.
+        idx = BOOK_DATA.index.get_loc(book_id)
+        avg_sim = COSINE_SIM[idx].mean() if idx < len(COSINE_SIM) else 0.1
+        
+        raw_score = calculate_book_score(book, user_genres, liked_authors, liked_titles, avg_sim)
+        
+        # Cap score at 100%
+        final_score = max(0.0, min(raw_score * 100, 100.0))
+        
+        liked_books.append({
+            'book_id': str(book_id),
+            'title': book['title'],
+            'author': book.get('author', 'Unknown'),
+            'image_url': book['image_url'],
+            'description': book['description'],
+            'score': f"{final_score:.1f}% Match"
+        })
             
     return jsonify(liked_books), 200
 
