@@ -18,6 +18,7 @@
             <div class="nav-bar">
                 <a href="/home">Dashboard</a>
                 <a href="/recommendation">Swipe</a>
+                <a href="/friends">Friends</a>
                 <a href="/liked" class="active">Liked Books</a>
                 <a href="/preferences">Preferences</a>
                 <a href="/search">Search</a>
@@ -138,9 +139,39 @@
                     <h3>${book.title}</h3>
                     <p>${book.author}</p>
                     <p style="color: #4CAF50; font-weight: bold; font-size: 0.9rem; margin-top: 5px;">${book.score}</p>
+                    <button onclick="window.handleUnlike('${book.book_id}')" class="btn" style="background-color: #ef5350; margin-top: 10px; font-size: 0.8rem; padding: 5px 10px; width: auto;">Unlike</button>
                 </div>
             `).join("");
         }
+
+        window.handleUnlike = async (bookId) => {
+            const user = auth.currentUser;
+            if (!user) return;
+
+            if (!confirm("Are you sure you want to unlike this book?")) return;
+
+            try {
+                const res = await fetch('/api/unlike', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        user_id: user.uid,
+                        book_id: bookId
+                    })
+                });
+
+                if (res.ok) {
+                    // Remove from cache and re-render
+                    cachedBooks = cachedBooks.filter(b => b.book_id !== bookId);
+                    sortAndRenderBooks(document.getElementById("sortFilter").value);
+                } else {
+                    alert("Failed to unlike book.");
+                }
+            } catch (e) {
+                console.error(e);
+                alert("Error unliking book.");
+            }
+        };
     </script>
 </body>
 

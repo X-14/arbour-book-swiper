@@ -7,7 +7,12 @@ import numpy as np
 import sys
 import os
 
-from firebase_dal import get_user_swipes, add_user_swipe, get_user_preferences, get_user_liked_book_ids, save_user_preferences, get_user_disliked_book_ids
+from firebase_dal import (
+    get_user_swipes, add_user_swipe, get_user_preferences, 
+    get_user_liked_book_ids, save_user_preferences, get_user_disliked_book_ids,
+    search_users_by_username, send_friend_request, answer_friend_request,
+    get_friend_requests, get_friends, get_friends_preferences_data, remove_user_swipe
+)
 
 # --- CONFIGURATION ---
 app = Flask(__name__)
@@ -82,7 +87,7 @@ def get_recommendations_sorted_by_preference(user_genres, history_list, limit=10
     
     return all_scores[:limit]
 
-def get_recommendation_from_model(current_book_id, history_list, user_genres=None, liked_book_ids=None, disliked_book_ids=None):
+def get_recommendation_from_model(current_book_id, history_list, user_genres=None, liked_book_ids=None, disliked_book_ids=None, friends_genres=None, friends_liked_books=None):
     """
     Finds the next unread book.
     Incorporates:
@@ -162,12 +167,22 @@ def get_recommendation_from_model(current_book_id, history_list, user_genres=Non
         if book_author in disliked_authors:
             score -= 0.15
             
-        # 6. PENALTY: Similar to Disliked Title (-10%)
         if len(title_lower) > 5:
             for d_title in disliked_titles:
                  if len(d_title) > 5 and (d_title in title_lower or title_lower in d_title):
                     score -= 0.10
                     break
+        
+        # 7. Boost: Friend Recommendations (+10%)
+        # If a friend liked this book
+        if friends_liked_books and str(rec_id) in friends_liked_books:
+             score += 0.10
+             
+        # 8. Boost: Friend Genre Match (+5%)
+        # If the book matches a genre your friends like (social proof)
+        if friends_genres:
+            f_genre_score = calculate_preference_score(book.get('genres', ''), friends_genres)
+            score += f_genre_score * 0.05
                     
         enhanced_scores.append((rec_id, score))
     
@@ -324,8 +339,12 @@ def handle_swipe():
     # 5. GET DISLIKED BOOKS (for Penalties)
     disliked_book_ids = get_user_disliked_book_ids(user_id)
 
-    # 6. AI: Get next recommendation
-    next_book_data = get_recommendation_from_model(current_book_id, history_list, user_genres, liked_book_ids, disliked_book_ids)
+    # 6. GET FRIENDS DATA
+    friends_list = get_friends(user_id)
+    friends_genres, friends_liked_books = get_friends_preferences_data(friends_list) if friends_list else ([], [])
+
+    # 7. AI: Get next recommendation
+    next_book_data = get_recommendation_from_model(current_book_id, history_list, user_genres, liked_book_ids, disliked_book_ids, friends_genres, friends_liked_books)
     
     return jsonify(next_book_data), 200
 
@@ -336,6 +355,99 @@ def liked():
 @app.route("/search")
 def search():
     return render_template('search.html')
+
+@app.route("/friends")
+def friends():
+    return render_template('friends.html')
+
+# --- FRIENDS API ---
+
+@app.route('/api/users/search', methods=['GET'])
+def search_users_api():
+    query = request.args.get('q', '')
+    if not query:
+        return jsonify([])
+    results = search_users_by_username(query)
+    return jsonify(results)
+
+@app.route('/api/friends/request', methods=['POST'])
+def send_request_api():
+    data = request.get_json()
+    from_uid = data.get('from_uid')
+    to_uid = data.get('to_uid')
+    
+    if not from_uid or not to_uid:
+        return jsonify({'error': 'Missing user IDs'}), 400
+        
+    success, msg = send_friend_request(from_uid, to_uid)
+    if success:
+        return jsonify({'message': msg}), 200
+    else:
+        return jsonify({'error': msg}), 400
+
+@app.route('/api/friends/respond', methods=['POST'])
+def respond_request_api():
+    data = request.get_json()
+    request_id = data.get('request_id')
+    status = data.get('status') # 'accepted' or 'rejected'
+    
+    if not request_id or status not in ['accepted', 'rejected']:
+        return jsonify({'error': 'Invalid request'}), 400
+        
+    answer_friend_request(request_id, status)
+    return jsonify({'success': True}), 200
+
+@app.route('/api/friends', methods=['GET'])
+def get_friends_data():
+    user_id = request.args.get('user_id')
+    if not user_id:
+        return jsonify({'error': 'User ID required'}), 400
+        
+    friends = get_friends(user_id)
+    requests = get_friend_requests(user_id)
+    
+    # Enrich friend data with names (we need to fetch them)
+    # Ideally DAL should handle this but we'll do quick enrichment here or DAL
+    # Let's trust DAL gave us IDs, we need names.
+    # Actually, for MVP, we need names. 
+    # Let's assume frontend will fetch details or we update DAL to return objects.
+    # The DAL `get_friends` returns IDs. We should probably update it to return objects or fetch here.
+    # Let's Update DAL or fetch here.
+    # fetching here...
+    
+    friend_details = []
+    # This loop is inefficient but fine for MVP (<100 friends)
+    from firebase_dal import db # Need DB access or helper
+    users_ref = db.collection('users')
+    
+    for fid in friends:
+        doc = users_ref.document(fid).get()
+        if doc.exists:
+            d = doc.to_dict()
+            friend_details.append({
+                'user_id': fid, 
+                'username': d.get('username') or d.get('displayName', 'Unknown')
+            })
+            
+    return jsonify({
+        'friends': friend_details,
+        'requests': requests
+    })
+
+@app.route('/api/unlike', methods=['POST'])
+def unlike_book():
+    data = request.get_json()
+    user_id = data.get('user_id')
+    book_id = data.get('book_id')
+    
+    if not user_id or not book_id:
+        return jsonify({'error': 'Missing data'}), 400
+        
+    success = remove_user_swipe(user_id, book_id)
+    if success:
+        return jsonify({'success': True}), 200
+    else:
+        return jsonify({'error': 'Swipe not found'}), 404
 
 def calculate_book_score(book, user_genres, liked_authors=None, liked_titles=None, avg_similarity=0.1):
     """

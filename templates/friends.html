@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Friends • Arbour</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/arbour.css') }}">
+    <script type="module" src="{{ url_for('static', filename='js/friends.js') }}" defer></script>
+</head>
+
+<body>
+
+    <header class="brand">
+        <div class="brand__inner">
+            <h1>Arbour Connect</h1>
+            <div class="nav-bar">
+                <a href="/home">Dashboard</a>
+                <a href="#" id="navSwipe">Swipe</a>
+                <a href="/friends" class="active">Friends</a>
+                <a href="/liked">Liked Books</a>
+                <a href="/preferences">Preferences</a>
+                <a href="/search">Search</a>
+                <a href="#" id="logoutBtn" style="color: #ff8a80;">Logout</a>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <div class="container dashboard">
+
+            <!-- FRIEND REQUESTS SECTION -->
+            <div class="card section" id="requestsSection" style="display:none;">
+                <h3 class="card__title">Friend Requests</h3>
+                <div id="requestsList"></div>
+            </div>
+
+            <!-- ADD FRIEND SECTION -->
+            <div class="card section">
+                <h3 class="card__title">Add Friends</h3>
+                <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                    <input type="text" id="userSearchInput" placeholder="Search by username..."
+                        style="flex: 1; padding: 10px; border: 1px solid #ccc; border-radius: 6px;">
+                    <button id="searchBtn" class="btn" style="width: auto; padding: 0 20px;">Search</button>
+                </div>
+                <div id="searchResults"></div>
+            </div>
+
+            <!-- FRIENDS LIST SECTION -->
+            <div class="card section">
+                <h3 class="card__title">Your Friends</h3>
+                <div id="friendsList">Loading friends...</div>
+            </div>
+
+        </div>
+    </main>
+
+    <footer class="footer">
+        <p>© <span id="year"></span> Arbour Book Recommender</p>
+    </footer>
+
+    <script>
+        document.getElementById("year").textContent = new Date().getFullYear();
+    </script>
+
+</body>
+
+</html>
