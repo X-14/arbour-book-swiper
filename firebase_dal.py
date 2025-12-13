@@ -1,7 +1,7 @@
 # firebase_dal.py
 
 import firebase_admin
-from firebase_admin import credentials, firestore
+from firebase_admin import credentials, firestore, auth
 from datetime import datetime
 import sys
 import os
@@ -127,35 +127,35 @@ def save_user_preferences(user_id, age, genres, frequency):
 
 # --- FRIENDS SYSTEM ---
 
-def search_users_by_username(query):
+def search_users_by_email(email):
     """
-    Search for users by displayName (username).
-    Returns a list of {user_id, username}
+    Search for a user by their email address using Admin Auth.
+    Returns list of {user_id, username, email}
     """
-    users_ref = db.collection('users')
-    # Note: Firestore doesn't support partial string match easily without third-party (Algolia).
-    # We will fetch all users and filter in python (NOT SCALABLE for production, but okay for MVP).
-    # Or rely on exact match. Let's try to match start of string.
-    
-    # We need to ensure text is queryable
-    all_users = users_ref.stream()
-    matches = []
-    query = query.lower()
-    
-    for doc in all_users:
-        data = doc.to_dict()
-        # We assume we store displayName in 'users' collection. 
-        # If not, we might need to rely on the client passing it or store it during login/preferences.
-        # Let's assume we start storing 'username' or 'displayName' in users doc.
+    try:
+        user_record = auth.get_user_by_email(email)
+        # We also need their username from Firestore if possible, or use display_name
         
-        username = data.get('username') or data.get('displayName', '')
-        if username and query in username.lower():
-            matches.append({
-                'user_id': doc.id,
-                'username': username
-            })
-    
-    return matches[:10]
+        # Check if they have a profile in 'users'
+        user_doc = db.collection('users').document(user_record.uid).get()
+        username = user_record.display_name or (email.split('@')[0] if email else "User")
+        
+        if user_doc.exists:
+            data = user_doc.to_dict()
+            if 'username' in data:
+                username = data['username']
+            elif 'displayName' in data:
+                username = data['displayName']
+                
+        return [{
+            'user_id': user_record.uid,
+            'username': username,
+            'email': email
+        }]
+    except Exception as e:
+        # User not found or error
+        print(f"User not found by email: {e}")
+        return []
 
 def send_friend_request(from_uid, to_uid):
     """Creates a pending friend request."""
@@ -223,25 +223,74 @@ def get_friends(user_id):
 def get_friends_preferences_data(friend_ids):
     """
     Aggregate preferences and liked books from a list of friend IDs.
-    Returns sets of liked genres and liked book IDs.
+    Returns:
+    1. Set of liked genres
+    2. Dictionary of {book_id: [friend_name1, friend_name2]} for liked books.
+    
+    OPTIMIZED: Uses batch fetching.
     """
     all_genres = set()
-    all_liked_books = set()
+    friends_likes_map = {} # book_id -> list of friend names
     
-    for fid in friend_ids:
+    if not friend_ids:
+        return [], {}
+        
+    users_ref = db.collection('users')
+    
+    # 1. Batch Get User Docs (for genres and names)
+    # create chunks of 100 just in case, though get_all handles arbitrarily many?
+    # Firestore get_all is usually robust.
+    refs = [users_ref.document(fid) for fid in friend_ids]
+    user_docs = db.get_all(refs)
+    
+    # Cache names for the next step
+    friend_names = {}
+    
+    for doc in user_docs:
+        if not doc.exists:
+            continue
+        data = doc.to_dict()
+        
+        # Name
+        fid = doc.id
+        name = data.get('username') or data.get('displayName') or "A Friend"
+        friend_names[fid] = name
+        
         # Genres
-        u_doc = db.collection('users').document(fid).get()
-        if u_doc.exists:
-            genres = u_doc.to_dict().get('genres', [])
-            for g in genres:
-                all_genres.add(g.lower())
-                
-        # Liked Books
-        likes = get_user_liked_book_ids(fid)
-        for bid in likes:
-            all_liked_books.add(bid)
+        genres = data.get('genres', [])
+        for g in genres:
+            all_genres.add(g.lower())
             
-    return list(all_genres), list(all_liked_books)
+    # 2. Batch Get Swipes (Likes)
+    # "IN" query is limited to 30. We must chunk it.
+    
+    def chunks(lst, n):
+        for i in range(0, len(lst), n):
+            yield lst[i:i + n]
+            
+    # Only fetch if we have friends
+    if friend_ids:
+        swipes_ref = db.collection('swipes')
+        for chunk in chunks(friend_ids, 10): # Safe chunk size 10
+             # Get all likes from these users
+             q = swipes_ref.where('user_id', 'in', chunk).where('action', '==', 'like')
+             docs = q.stream()
+             
+             for s in docs:
+                 d = s.to_dict()
+                 bid = d.get('book_id')
+                 uid = d.get('user_id')
+                 
+                 fname = friend_names.get(uid, "A Friend")
+                 
+                 str_bid = str(bid)
+                 if str_bid not in friends_likes_map:
+                     friends_likes_map[str_bid] = []
+                 # Avoid duplicates
+                 if fname not in friends_likes_map[str_bid]:
+                     friends_likes_map[str_bid].append(fname)
+            
+    return list(all_genres), friends_likes_map
 
 def remove_user_swipe(user_id, book_id):
     """Removes a swipe (unlike)."""

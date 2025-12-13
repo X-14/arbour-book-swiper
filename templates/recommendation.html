@@ -21,6 +21,7 @@
             <div class="nav-bar">
                 <a href="/home">Dashboard</a>
                 <a href="#" id="navSwipe" class="active">Swipe</a>
+                <a href="/friends">Friends</a>
                 <a href="/liked">Liked Books</a>
                 <a href="/preferences">Preferences</a>
                 <a href="/search">Search</a>
@@ -44,6 +45,9 @@
                 <img id="image" src="{{ initial_image }}" alt="Book Cover">
                 <h3 id="title">{{ initial_title }}</h3>
                 <p><strong>Author:</strong> <span id="author">{{ initial_author }}</span></p>
+                <p id="likedByContainer"
+                    style="color: #673ab7; font-weight: bold; min-height: 20px; font-size: 0.9rem; margin-bottom: 10px;">
+                </p>
                 <p id="description">{{ initial_description }}</p>
                 <h4 id="similiarityScore">{{ initial_score }}</h4>
             </div>

@@ -10,7 +10,7 @@ import os
 from firebase_dal import (
     get_user_swipes, add_user_swipe, get_user_preferences, 
     get_user_liked_book_ids, save_user_preferences, get_user_disliked_book_ids,
-    search_users_by_username, send_friend_request, answer_friend_request,
+    search_users_by_email, send_friend_request, answer_friend_request,
     get_friend_requests, get_friends, get_friends_preferences_data, remove_user_swipe
 )
 
@@ -33,6 +33,10 @@ try:
             
     COSINE_SIM = joblib.load(sim_matrix_path)
     BOOK_DATA = joblib.load(book_data_path)
+    
+    # PRE-PROCESS OPTIMIZATION: Convert genres to lowercase string once
+    BOOK_DATA['genres_str'] = BOOK_DATA['genres'].fillna('').astype(str).str.lower()
+    
     print("AI Model loaded successfully.")
 except Exception as e:
     print(f"FATAL: Error loading model files: {e}")
@@ -40,19 +44,30 @@ except Exception as e:
 
 # --- AI RECOMMENDATION LOGIC ---
 
-def calculate_preference_score(book_genres, user_genres):
-    """Calculate how well a book's genres match the user's preferences (0-1)."""
-    if not user_genres or not book_genres:
+def calculate_preference_score(book, user_genres):
+    """
+    Calculate how well a book matches the user's preferences (0-1).
+    Optimized to use pre-calculated 'genres_str'.
+    """
+    if not user_genres:
         return 0.0
     
-    # Normalize both to lowercase for comparison
-    user_genres_lower = [g.lower() for g in user_genres]
-    book_genres_str = str(book_genres).lower()
+    # Access pre-calc lowercase string directly
+    book_genres_str = book.get('genres_str', '')
+    if not book_genres_str:
+         return 0.0
+
+    # Assume user_genres are already lowercased by the caller or do it simply
+    # (Doing it here 100s of times is minor compared to df operations but let's be safe)
+    # We will assume caller passes valid list.
     
-    # Count how many user genres are in the book
-    matches = sum(1 for genre in user_genres_lower if genre in book_genres_str)
+    # Count matches
+    matches = 0
+    for genre in user_genres:
+        # Assuming user_genres passed in are already normalized or we do it cheaply
+        if genre.lower() in book_genres_str:
+            matches += 1
     
-    # Return ratio of matched genres (e.g., 2 out of 3 = 0.67)
     return matches / len(user_genres)
 
 def get_recommendations_sorted_by_preference(user_genres, history_list, limit=100):
@@ -70,7 +85,7 @@ def get_recommendations_sorted_by_preference(user_genres, history_list, limit=10
         book = BOOK_DATA.loc[book_id]
         
         # Calculate genre preference score (0-1)
-        genre_score = calculate_preference_score(book.get('genres', ''), user_genres)
+        genre_score = calculate_preference_score(book, user_genres)
         
         # Get the average content similarity to all books (baseline relevance)
         idx = BOOK_DATA.index.get_loc(book_id)
@@ -87,15 +102,10 @@ def get_recommendations_sorted_by_preference(user_genres, history_list, limit=10
     
     return all_scores[:limit]
 
-def get_recommendation_from_model(current_book_id, history_list, user_genres=None, liked_book_ids=None, disliked_book_ids=None, friends_genres=None, friends_liked_books=None):
+def get_recommendation_from_model(current_book_id, history_list, user_genres=None, liked_book_ids=None, disliked_book_ids=None, friends_genres=None, friends_likes_map=None):
     """
     Finds the next unread book.
-    Incorporates:
-    - User Genre Preferences
-    - Content Similarity (Description/Title)
-    - Liked Authors (Boost)
-    - Series/Title Matching (Boost)
-    - Dislikes (Penalty)
+    Returns dict including 'liked_by' if applicable.
     """
     current_book_id = str(current_book_id)
     
@@ -109,7 +119,6 @@ def get_recommendation_from_model(current_book_id, history_list, user_genres=Non
     liked_authors = set()
     liked_titles = []
     if liked_book_ids:
-        # Filter valid IDs to avoid errors
         valid_ids = [bid for bid in liked_book_ids if bid in BOOK_DATA.index]
         if valid_ids:
             liked_authors = set(BOOK_DATA.loc[valid_ids]['author'].fillna('').str.lower().tolist())
@@ -127,15 +136,18 @@ def get_recommendation_from_model(current_book_id, history_list, user_genres=Non
     # Enhanced Scoring Logic
     enhanced_scores = []
     
-    # We'll stick to top 500 similar books for performance, or all if dataset is small
-    # Sorting by raw similarity first helps performance
-    sim_scores = sorted(sim_scores, key=lambda x: x[1], reverse=True)[:500]
+    # OPTIMIZATION: Use numpy argsort for speed instead of converting to list and sorting
+    # We want top 500 most similar. 
+    # argsort returns indices of sorted array (ascending). We take the last 500 and reverse.
+    top_indices = COSINE_SIM[idx].argsort()[-500:][::-1]
 
-    for i, content_sim in sim_scores:
-        rec_id = BOOK_DATA.index[i]
+    for rec_idx in top_indices:
+        # Get the actual book ID from the index
+        rec_id = BOOK_DATA.index[rec_idx]
+        content_sim = COSINE_SIM[idx][rec_idx]
         
         # Skip current book and already swiped books
-        if str(rec_id) in history_list or i == idx:
+        if str(rec_id) in history_list or rec_idx == idx:
             continue
         
         book = BOOK_DATA.loc[rec_id]
@@ -145,17 +157,15 @@ def get_recommendation_from_model(current_book_id, history_list, user_genres=Non
         
         # 2. Preference Score: Genre Match (Weight: 40%)
         if user_genres:
-            genre_score = calculate_preference_score(book.get('genres', ''), user_genres)
+            genre_score = calculate_preference_score(book, user_genres)
             score += genre_score * 0.4
         
-        # 3. Boost: Liked Author (+10%) - REDUCED FROM 20%
+        # 3. Boost: Liked Author (+10%)
         book_author = book.get('author', '').lower()
         if book_author in liked_authors:
             score += 0.1
             
         # 4. Boost: Series/Title Similarity (+15%)
-        # Simple heuristic: if a liked title is contained in this title (or vice versa) 
-        # and length is substantial (avoid matching "The")
         title_lower = book['title'].lower()
         if len(title_lower) > 5:
             for l_title in liked_titles:
@@ -175,25 +185,25 @@ def get_recommendation_from_model(current_book_id, history_list, user_genres=Non
         
         # 7. Boost: Friend Recommendations (+10%)
         # If a friend liked this book
-        if friends_liked_books and str(rec_id) in friends_liked_books:
-             score += 0.10
+        liked_by_list = []
+        if friends_likes_map and str(rec_id) in friends_likes_map:
+             score += 0.15 # Increased boost
+             liked_by_list = friends_likes_map[str(rec_id)]
              
         # 8. Boost: Friend Genre Match (+5%)
-        # If the book matches a genre your friends like (social proof)
         if friends_genres:
-            f_genre_score = calculate_preference_score(book.get('genres', ''), friends_genres)
+            f_genre_score = calculate_preference_score(book, friends_genres)
             score += f_genre_score * 0.05
                     
-        enhanced_scores.append((rec_id, score))
+        enhanced_scores.append((rec_id, score, liked_by_list))
     
     # Sort by final enhanced score
     enhanced_scores.sort(key=lambda x: x[1], reverse=True)
     
     if enhanced_scores:
-        rec_id, score = enhanced_scores[0]
+        rec_id, score, liked_by_list = enhanced_scores[0]
         recommended_book = BOOK_DATA.loc[rec_id]
         
-        # Cap score at 100% for display and ensure it's not negative
         final_score = max(0.0, min(score * 100, 100.0))
         
         return {
@@ -202,10 +212,11 @@ def get_recommendation_from_model(current_book_id, history_list, user_genres=Non
             'description': recommended_book['description'],
             'image_url': recommended_book['image_url'],
             'score': final_score,
-            'author': recommended_book.get('author', 'Unknown Author')
+            'author': recommended_book.get('author', 'Unknown Author'),
+            'liked_by': liked_by_list
         }
     
-    return {'book_id': 'DONE', 'title': 'No More Recommendations!', 'description': 'You have swiped all related books.', 'image_url': '', 'score': 0}
+    return {'book_id': 'DONE', 'title': 'No More Recommendations!', 'description': 'You have swiped all related books.', 'image_url': '', 'score': 0, 'liked_by': []}
 
 def get_initial_book(user_genres, history_list):
     """
@@ -341,10 +352,10 @@ def handle_swipe():
 
     # 6. GET FRIENDS DATA
     friends_list = get_friends(user_id)
-    friends_genres, friends_liked_books = get_friends_preferences_data(friends_list) if friends_list else ([], [])
+    friends_genres, friends_likes_map = get_friends_preferences_data(friends_list) if friends_list else ([], {})
 
     # 7. AI: Get next recommendation
-    next_book_data = get_recommendation_from_model(current_book_id, history_list, user_genres, liked_book_ids, disliked_book_ids, friends_genres, friends_liked_books)
+    next_book_data = get_recommendation_from_model(current_book_id, history_list, user_genres, liked_book_ids, disliked_book_ids, friends_genres, friends_likes_map)
     
     return jsonify(next_book_data), 200
 
@@ -367,7 +378,10 @@ def search_users_api():
     query = request.args.get('q', '')
     if not query:
         return jsonify([])
-    results = search_users_by_username(query)
+    # Assuming query is email
+    results = search_users_by_email(query)
+    # If no email match, maybe try fallback to username search? 
+    # For now, stick to email as requested.
     return jsonify(results)
 
 @app.route('/api/friends/request', methods=['POST'])
@@ -424,9 +438,34 @@ def get_friends_data():
         doc = users_ref.document(fid).get()
         if doc.exists:
             d = doc.to_dict()
+            
+            # Fetch friend's liked books
+            liked_ids = get_user_liked_book_ids(fid)
+            top_books = []
+            
+            # Get details for up to 3 liked books
+            # We iterate in reverse to get most recent if the DAL returns time-sorted (it doesn't explicitly, but typically append-order)
+            # Actually, let's just take the last 3 (most recent) if list is ordered, or first 3.
+            # get_user_liked_book_ids usually returns in stream order.
+            
+            # Filter valid IDs
+            valid_ids = [bid for bid in liked_ids if str(bid) in BOOK_DATA.index]
+            
+            # Take last 3 (assuming stream/append order is somewhat chronological or at least recent)
+            recent_likes = valid_ids[-3:] if valid_ids else []
+            recent_likes.reverse() # Show newest first
+            
+            for bid in recent_likes:
+                book = BOOK_DATA.loc[str(bid)]
+                top_books.append({
+                    'title': book['title'],
+                    'image_url': book['image_url']
+                })
+            
             friend_details.append({
                 'user_id': fid, 
-                'username': d.get('username') or d.get('displayName', 'Unknown')
+                'username': d.get('username') or d.get('displayName', 'Unknown'),
+                'top_books': top_books
             })
             
     return jsonify({
@@ -458,7 +497,7 @@ def calculate_book_score(book, user_genres, liked_authors=None, liked_titles=Non
     
     # 2. Preference Score: Genre Match (40%)
     if user_genres:
-        genre_score = calculate_preference_score(book.get('genres', ''), user_genres)
+        genre_score = calculate_preference_score(book, user_genres)
         score += genre_score * 0.4
     
     # 3. Boost: Liked Author (15%)

@@ -28,6 +28,7 @@ const descriptionEl = document.getElementById("description");
 const imageEl = document.getElementById("image");
 const scoreEl = document.getElementById("similiarityScore");
 const authorEl = document.getElementById("author");
+const likedByEl = document.getElementById("likedByContainer");
 
 // --- Configuration for swipe animation ---
 const moveDistance = 500; // Move further off-screen for a clear swipe
@@ -115,6 +116,7 @@ function updateBookCard(data) {
         scoreEl.textContent = "";
         imageEl.src = "";
         authorEl.textContent = "";
+        if (likedByEl) likedByEl.textContent = "";
         bookCard.dataset.bookId = "DONE";
         return;
     }
@@ -124,6 +126,16 @@ function updateBookCard(data) {
     titleEl.textContent = data.title;
     descriptionEl.textContent = data.description;
     authorEl.textContent = data.author || 'Unknown Author';
+
+    if (likedByEl) {
+        if (data.liked_by && data.liked_by.length > 0) {
+            likedByEl.textContent = `Liked by: ${data.liked_by.join(', ')}`;
+            likedByEl.style.display = 'block';
+        } else {
+            likedByEl.textContent = '';
+            likedByEl.style.display = 'none';
+        }
+    }
 
     // Format and display the similarity score
     scoreEl.textContent = `Similarity: ${data.score ? data.score.toFixed(2) + '%' : 'N/A'}`;

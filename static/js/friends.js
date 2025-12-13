@@ -29,9 +29,16 @@ document.getElementById("logoutBtn").addEventListener("click", () => {
 });
 
 // SEARCH USERS
+document.getElementById("userSearchInput").placeholder = "Search by email address..."; // Added this line
 document.getElementById("searchBtn").addEventListener("click", async () => {
     const query = document.getElementById("userSearchInput").value.trim();
     if (!query) return;
+
+    // Check if it looks like an email
+    if (!query.includes('@')) {
+        alert("Please enter a valid email address.");
+        return;
+    }
 
     const resultsContainer = document.getElementById("searchResults");
     resultsContainer.innerHTML = "Searching...";
@@ -119,8 +126,19 @@ async function loadFriendsData(userId) {
         const friendsList = document.getElementById("friendsList");
         if (data.friends && data.friends.length > 0) {
             friendsList.innerHTML = data.friends.map(f => `
-                <div style="padding: 10px; border-bottom: 1px solid #eee;">
-                    <span style="font-weight: 600;">${f.username}</span>
+                <div style="padding: 15px; border-bottom: 1px solid #eee;">
+                    <span style="font-weight: 600; font-size: 1.1rem; display: block; margin-bottom: 5px;">${f.username}</span>
+                    
+                    ${f.top_books && f.top_books.length > 0 ? `
+                        <div style="display: flex; gap: 10px; margin-top: 5px;">
+                             ${f.top_books.map(b => `
+                                <div style="width: 50px;" title="${b.title}">
+                                    <img src="${b.image_url}" style="width: 100%; height: 75px; object-fit: cover; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.2);">
+                                </div>
+                             `).join('')}
+                        </div>
+                        <p style="font-size: 0.8rem; color: #666; margin-top: 5px;">Recently liked books</p>
+                    ` : '<p style="font-size: 0.8rem; color: #999;">No active preferences.</p>'}
                 </div>
             `).join("");
         } else {
