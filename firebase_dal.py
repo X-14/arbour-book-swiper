@@ -2,7 +2,7 @@
 
 import firebase_admin
 from firebase_admin import credentials, firestore, auth
-from datetime import datetime
+from datetime import datetime, timezone
 import sys
 import os
 
@@ -88,7 +88,7 @@ def add_user_swipe(user_id, book_id, action):
         'user_id': user_id,
         'book_id': book_id,
         'action': action,
-        'timestamp': datetime.now()
+        'timestamp': datetime.now(timezone.utc)
     })
 
 def get_user_preferences(user_id):
@@ -100,15 +100,31 @@ def get_user_preferences(user_id):
     return None
 
 def get_user_liked_book_ids(user_id):
-    """Fetches a list of book_ids that the user has LIKED."""
+    """Fetches a list of book_ids that the user has LIKED, sorted by most recent."""
     swipes_ref = db.collection('swipes').where('user_id', '==', user_id).where('action', '==', 'like')
-    swipes = list(swipes_ref.stream())
     
-    # Sort in Python to avoid Firestore Composite Index requirements for now
-    # Assuming 'timestamp' exists; if not, it falls back to unsorted (or error, but timestamp is added on create)
-    swipes.sort(key=lambda x: x.to_dict().get('timestamp', datetime.min), reverse=True)
+    # 1. Fetch all documents
+    docs = list(swipes_ref.stream())
+    data = [doc.to_dict() for doc in docs]
     
-    return [swipe.to_dict()['book_id'] for swipe in swipes]
+    # 2. Define a safe sort key that handles:
+    #    - Missing timestamps (None)
+    #    - Naive datetimes (no timezone)
+    #    - Aware datetimes (with timezone)
+    def sort_key(d):
+        ts = d.get('timestamp')
+        if ts is None:
+            # Treat missing timestamps as very old
+            return datetime.min.replace(tzinfo=timezone.utc)
+        if hasattr(ts, 'tzinfo') and ts.tzinfo is None:
+            # Make naive timestamps aware (assume UTC for sorting comparison compliance)
+            return ts.replace(tzinfo=timezone.utc)
+        return ts
+
+    # 3. Sort by timestamp descending (newest first)
+    data.sort(key=sort_key, reverse=True)
+    
+    return [item['book_id'] for item in data]
 
 def get_user_disliked_book_ids(user_id):
     """Fetches a list of book_ids that the user has DISLIKED."""

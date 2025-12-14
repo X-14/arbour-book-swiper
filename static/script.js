@@ -26,7 +26,7 @@ const xmark = document.getElementById("xmark");
 const titleEl = document.getElementById("title");
 const descriptionEl = document.getElementById("description");
 const imageEl = document.getElementById("image");
-const scoreEl = document.getElementById("similiarityScore");
+const scoreEl = document.getElementById("similarityScore");
 const authorEl = document.getElementById("author");
 const likedByEl = document.getElementById("likedByContainer");
 

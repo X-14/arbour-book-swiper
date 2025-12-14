@@ -35,8 +35,8 @@
                     <label for="sortFilter" style="margin-right: 10px; font-weight: 500;">Sort by:</label>
                     <select id="sortFilter"
                         style="padding: 8px 12px; border-radius: 8px; border: 1px solid #ddd; background: #fff; font-family: inherit;">
+                        <option value="recent" selected>Most Recent</option>
                         <option value="match">Highest Match</option>
-                        <option value="recent">Most Recent</option>
                         <option value="alpha">A-Z</option>
                     </select>
                 </div>
@@ -96,7 +96,8 @@
                 // but actually the backend loop order isn't guaranteed to be time-based unless swiped timestamp is used.
                 // For now, we'll default to "Highest Match" as it is the most impressive view.
 
-                sortAndRenderBooks("match");
+                // Default sort: Most Recent
+                sortAndRenderBooks("recent");
 
             } catch (err) {
                 console.error(err);
@@ -125,12 +126,9 @@
                 // Sort by Title (A-Z)
                 sortedBooks.sort((a, b) => a.title.localeCompare(b.title));
             } else if (criteria === "recent") {
-                // Since we don't have explicit timestamps in the simplified API response yet,
-                // we will assume the original fetch order (which closely mirrors array append order) 
-                // is "Oldest First", so "Recent" is reversed.
-                // Ideally, we'd add timestamps to the API.
-                // For now, we'll reverse the original array.
-                sortedBooks.reverse();
+                // Backend now returns sorted by timestamp descending (Newest First).
+                // So we do NOT need to reverse it. It is already correct.
+                // sortedBooks = sortedBooks; (no-op)
             }
 
             grid.innerHTML = sortedBooks.map(book => `
