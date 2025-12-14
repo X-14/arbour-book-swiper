@@ -46,7 +46,8 @@
                 <h3 id="title">{{ initial_title }}</h3>
                 <p><strong>Author:</strong> <span id="author">{{ initial_author }}</span></p>
                 <p id="likedByContainer"
-                    style="color: #673ab7; font-weight: bold; min-height: 20px; font-size: 0.9rem; margin-bottom: 10px;">
+                    style="color: #673ab7; font-weight: bold; min-height: 20px; font-size: 0.9rem; margin-bottom: 10px; display: {{ 'block' if initial_liked_by else 'none' }};">
+                    {{ initial_liked_by }}
                 </p>
                 <p id="description">{{ initial_description }}</p>
                 <h4 id="similiarityScore">{{ initial_score }}</h4>

@@ -102,7 +102,11 @@ def get_user_preferences(user_id):
 def get_user_liked_book_ids(user_id):
     """Fetches a list of book_ids that the user has LIKED."""
     swipes_ref = db.collection('swipes').where('user_id', '==', user_id).where('action', '==', 'like')
-    swipes = swipes_ref.stream()
+    swipes = list(swipes_ref.stream())
+    
+    # Sort in Python to avoid Firestore Composite Index requirements for now
+    # Assuming 'timestamp' exists; if not, it falls back to unsorted (or error, but timestamp is added on create)
+    swipes.sort(key=lambda x: x.to_dict().get('timestamp', datetime.min), reverse=True)
     
     return [swipe.to_dict()['book_id'] for swipe in swipes]
 
@@ -127,35 +131,70 @@ def save_user_preferences(user_id, age, genres, frequency):
 
 # --- FRIENDS SYSTEM ---
 
-def search_users_by_email(email):
+def search_users(query):
     """
-    Search for a user by their email address using Admin Auth.
-    Returns list of {user_id, username, email}
+    Search for a user by email or username.
+    1. Try Auth by email.
+    2. Try Firestore 'users' collection by email field.
+    3. Try Firestore 'users' collection by username field.
     """
+    results = []
+    seen_ids = set()
+    
+    # 1. Try Auth by Email (Exact match)
     try:
-        user_record = auth.get_user_by_email(email)
-        # We also need their username from Firestore if possible, or use display_name
+        user_record = auth.get_user_by_email(query)
+        username = user_record.display_name or (user_record.email.split('@')[0] if user_record.email else "User")
         
-        # Check if they have a profile in 'users'
+        # Check profile
         user_doc = db.collection('users').document(user_record.uid).get()
-        username = user_record.display_name or (email.split('@')[0] if email else "User")
-        
         if user_doc.exists:
-            data = user_doc.to_dict()
-            if 'username' in data:
-                username = data['username']
-            elif 'displayName' in data:
-                username = data['displayName']
-                
-        return [{
+            d = user_doc.to_dict()
+            username = d.get('username') or d.get('displayName') or username
+            
+        results.append({
             'user_id': user_record.uid,
             'username': username,
-            'email': email
-        }]
+            'email': user_record.email
+        })
+        seen_ids.add(user_record.uid)
+    except:
+        pass # Not found in Auth or error
+        
+    # 2. Try Firestore 'users' collection (Exact email match if stored, or Username match)
+    # Note: Firestore does not support OR matching across different fields easily in one query without a composite index or multiple queries.
+    
+    # Query by username (exact)
+    try:
+        q_user = db.collection('users').where('username', '==', query).stream()
+        for doc in q_user:
+            if doc.id in seen_ids:
+                continue
+            d = doc.to_dict()
+            # We need email. It might not be in the doc (only in Auth), 
+            # but we can try to fetch Auth user by UID to get email.
+            email = d.get('email', 'Private Email')
+            username = d.get('username', query)
+            
+            try:
+                ur = auth.get_user(doc.id)
+                email = ur.email
+            except:
+                pass
+                
+            results.append({
+                'user_id': doc.id,
+                'username': username,
+                'email': email
+            })
+            seen_ids.add(doc.id)
     except Exception as e:
-        # User not found or error
-        print(f"User not found by email: {e}")
-        return []
+        print(f"Error searching Firestore by username: {e}")
+
+    # Query by email field in Firestore (if we store it there, which we should start doing if not)
+    # The current save_user_preferences doesn't strictly save email.
+    
+    return results
 
 def send_friend_request(from_uid, to_uid):
     """Creates a pending friend request."""
@@ -190,14 +229,23 @@ def get_friend_requests(user_id):
     """Get pending incoming requests."""
     reqs = db.collection('friendships').where('to_uid', '==', user_id).where('status', '==', 'pending').stream()
     results = []
+    
+    # Pre-fetch user emails via auth? Or fetch one by one.
+    # Requests are usually few. One by one is fine for now, but we can handle exceptions.
+    
     for r in reqs:
         d = r.to_dict()
         d['id'] = r.id
-        # Fetch sender info
-        sender = db.collection('users').document(d['from_uid']).get()
-        if sender.exists:
-            s_data = sender.to_dict()
-            d['sender_username'] = s_data.get('username') or s_data.get('displayName', 'Unknown')
+        # Fetch sender info from Auth to ensure we get Email
+        try:
+            user_record = auth.get_user(d['from_uid'])
+            d['sender_email'] = user_record.email
+            d['sender_username'] = user_record.display_name or user_record.email
+        except Exception as e:
+            # Fallback to Firestore if Auth fails (rare) or just handle gracefully
+            d['sender_email'] = "Unknown Email"
+            d['sender_username'] = "Unknown User"
+            
         results.append(d)
     return results
 
@@ -225,36 +273,42 @@ def get_friends_preferences_data(friend_ids):
     Aggregate preferences and liked books from a list of friend IDs.
     Returns:
     1. Set of liked genres
-    2. Dictionary of {book_id: [friend_name1, friend_name2]} for liked books.
+    2. Dictionary of {book_id: [friend_email1, friend_email2]} for liked books.
     
     OPTIMIZED: Uses batch fetching.
     """
     all_genres = set()
-    friends_likes_map = {} # book_id -> list of friend names
+    friends_likes_map = {} # book_id -> list of friend emails
     
     if not friend_ids:
         return [], {}
         
     users_ref = db.collection('users')
     
-    # 1. Batch Get User Docs (for genres and names)
-    # create chunks of 100 just in case, though get_all handles arbitrarily many?
-    # Firestore get_all is usually robust.
+    # 1. Batch Get User Docs (for genres) AND Auth Users (for emails)
+    
+    # A. Get Emails from Auth (Batch)
+    friend_emails = {}
+    try:
+        # auth.get_users takes a list of UidIdentifier
+        identifiers = [auth.UidIdentifier(uid) for uid in friend_ids]
+        get_users_result = auth.get_users(identifiers)
+        
+        for user_record in get_users_result.users:
+            friend_emails[user_record.uid] = user_record.email
+            
+    except Exception as e:
+        print(f"Error batch fetching users from Auth: {e}")
+        # Fallback?
+    
+    # B. Get Genres from Firestore (Batch)
     refs = [users_ref.document(fid) for fid in friend_ids]
     user_docs = db.get_all(refs)
-    
-    # Cache names for the next step
-    friend_names = {}
     
     for doc in user_docs:
         if not doc.exists:
             continue
         data = doc.to_dict()
-        
-        # Name
-        fid = doc.id
-        name = data.get('username') or data.get('displayName') or "A Friend"
-        friend_names[fid] = name
         
         # Genres
         genres = data.get('genres', [])
@@ -281,14 +335,15 @@ def get_friends_preferences_data(friend_ids):
                  bid = d.get('book_id')
                  uid = d.get('user_id')
                  
-                 fname = friend_names.get(uid, "A Friend")
+                 # Use email if available, else fallback to something
+                 f_email = friend_emails.get(uid, "A Friend")
                  
                  str_bid = str(bid)
                  if str_bid not in friends_likes_map:
                      friends_likes_map[str_bid] = []
                  # Avoid duplicates
-                 if fname not in friends_likes_map[str_bid]:
-                     friends_likes_map[str_bid].append(fname)
+                 if f_email not in friends_likes_map[str_bid]:
+                     friends_likes_map[str_bid].append(f_email)
             
     return list(all_genres), friends_likes_map
 

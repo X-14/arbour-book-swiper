@@ -29,16 +29,16 @@ document.getElementById("logoutBtn").addEventListener("click", () => {
 });
 
 // SEARCH USERS
-document.getElementById("userSearchInput").placeholder = "Search by email address..."; // Added this line
+document.getElementById("userSearchInput").placeholder = "Search by full email address..."; // Added this line
 document.getElementById("searchBtn").addEventListener("click", async () => {
     const query = document.getElementById("userSearchInput").value.trim();
     if (!query) return;
 
-    // Check if it looks like an email
-    if (!query.includes('@')) {
-        alert("Please enter a valid email address.");
-        return;
-    }
+    // Check if it looks like an email - REMOVED to allow name search
+    // if (!query.includes('@')) {
+    //     alert("Please enter a valid email address.");
+    //     return;
+    // }
 
     const resultsContainer = document.getElementById("searchResults");
     resultsContainer.innerHTML = "Searching...";
@@ -59,7 +59,7 @@ document.getElementById("searchBtn").addEventListener("click", async () => {
 
             return `
             <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid #eee;">
-                <span>${u.username}</span>
+                <span>${u.username} <small style='color:#666'>(${u.email})</small></span>
                 <button onclick="window.sendRequest('${u.user_id}')" class="btn" style="width: auto; padding: 5px 10px; font-size: 0.8rem;">Add Friend</button>
             </div>
             `;
@@ -111,7 +111,7 @@ async function loadFriendsData(userId) {
             reqSection.style.display = 'block';
             reqList.innerHTML = data.requests.map(r => `
                 <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: #fff8e1; margin-bottom: 5px; border-radius: 6px;">
-                    <span><b>${r.sender_username}</b> wants to be friends.</span>
+                    <span><b>${r.sender_username} <small>(${r.sender_email})</small></b> wants to be friends.</span>
                     <div>
                         <button onclick="window.respondRequest('${r.id}', 'accepted')" class="btn" style="width: auto; background: #4caf50; padding: 5px 10px; margin-right: 5px;">Accept</button>
                         <button onclick="window.respondRequest('${r.id}', 'rejected')" class="btn" style="width: auto; background: #f44336; padding: 5px 10px;">Decline</button>
@@ -127,7 +127,10 @@ async function loadFriendsData(userId) {
         if (data.friends && data.friends.length > 0) {
             friendsList.innerHTML = data.friends.map(f => `
                 <div style="padding: 15px; border-bottom: 1px solid #eee;">
-                    <span style="font-weight: 600; font-size: 1.1rem; display: block; margin-bottom: 5px;">${f.username}</span>
+                    <span style="font-weight: 600; font-size: 1.1rem; display: block; margin-bottom: 5px;">
+                        ${f.username} 
+                        <span style="font-weight: 400; font-size: 0.9rem; color: #666;">(${f.email || 'No Email'})</span>
+                    </span>
                     
                     ${f.top_books && f.top_books.length > 0 ? `
                         <div style="display: flex; gap: 10px; margin-top: 5px;">

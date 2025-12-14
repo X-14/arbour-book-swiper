@@ -10,7 +10,7 @@ import os
 from firebase_dal import (
     get_user_swipes, add_user_swipe, get_user_preferences, 
     get_user_liked_book_ids, save_user_preferences, get_user_disliked_book_ids,
-    search_users_by_email, send_friend_request, answer_friend_request,
+    search_users, send_friend_request, answer_friend_request,
     get_friend_requests, get_friends, get_friends_preferences_data, remove_user_swipe
 )
 
@@ -315,13 +315,24 @@ def recommendation():
             'author': initial_book_data.get('author', 'Unknown Author')
         }
 
+    initial_liked_by_text = ""
+    if user_id and initial_book:
+        # Fetch friend likes for the initial book to display immediately
+        friends_list = get_friends(user_id)
+        if friends_list:
+            friends_genres, friends_likes_map = get_friends_preferences_data(friends_list)
+            if friends_likes_map and initial_book['book_id'] in friends_likes_map:
+                liked_emails = friends_likes_map[initial_book['book_id']]
+                initial_liked_by_text = "Liked by: " + ", ".join(liked_emails)
+
     return render_template('recommendation.html', 
         initial_book_id=initial_book['book_id'], 
         initial_title=initial_book['title'],
         initial_description=initial_book['description'],
         initial_image=initial_book['image_url'], 
         initial_score=initial_book.get('score', ''),
-        initial_author=initial_book.get('author', 'Unknown Author')
+        initial_author=initial_book.get('author', 'Unknown Author'),
+        initial_liked_by=initial_liked_by_text
     )
 
 @app.route('/api/swipe', methods=['POST'])
@@ -379,7 +390,7 @@ def search_users_api():
     if not query:
         return jsonify([])
     # Assuming query is email
-    results = search_users_by_email(query)
+    results = search_users(query)
     # If no email match, maybe try fallback to username search? 
     # For now, stick to email as requested.
     return jsonify(results)
@@ -431,7 +442,8 @@ def get_friends_data():
     
     friend_details = []
     # This loop is inefficient but fine for MVP (<100 friends)
-    from firebase_dal import db # Need DB access or helper
+    # This loop is inefficient but fine for MVP (<100 friends)
+    from firebase_dal import db, auth # Need DB and Auth access
     users_ref = db.collection('users')
     
     for fid in friends:
@@ -444,16 +456,9 @@ def get_friends_data():
             top_books = []
             
             # Get details for up to 3 liked books
-            # We iterate in reverse to get most recent if the DAL returns time-sorted (it doesn't explicitly, but typically append-order)
-            # Actually, let's just take the last 3 (most recent) if list is ordered, or first 3.
-            # get_user_liked_book_ids usually returns in stream order.
-            
-            # Filter valid IDs
             valid_ids = [bid for bid in liked_ids if str(bid) in BOOK_DATA.index]
-            
-            # Take last 3 (assuming stream/append order is somewhat chronological or at least recent)
             recent_likes = valid_ids[-3:] if valid_ids else []
-            recent_likes.reverse() # Show newest first
+            recent_likes.reverse() 
             
             for bid in recent_likes:
                 book = BOOK_DATA.loc[str(bid)]
@@ -462,9 +467,28 @@ def get_friends_data():
                     'image_url': book['image_url']
                 })
             
+            # Fetch email from Auth
+            email = "Unknown Email"
+            try:
+                ur = auth.get_user(fid)
+                email = ur.email
+            except:
+                pass
+
+            # Determine display name
+            raw_name = d.get('username') or d.get('displayName')
+            display_name = raw_name
+            
+            if not display_name or display_name == 'Unknown':
+                if email and '@' in email:
+                    display_name = email.split('@')[0]
+                else:
+                    display_name = "Friend"
+
             friend_details.append({
                 'user_id': fid, 
-                'username': d.get('username') or d.get('displayName', 'Unknown'),
+                'username': display_name,
+                'email': email,
                 'top_books': top_books
             })
             
@@ -596,6 +620,8 @@ def search_books():
             'description': book['description']
         })
         
+    return jsonify(results)
+
 @app.route('/api/explore', methods=['GET'])
 def explore_books():
     """
