@@ -457,8 +457,7 @@ def get_friends_data():
             
             # Get details for up to 3 liked books
             valid_ids = [bid for bid in liked_ids if str(bid) in BOOK_DATA.index]
-            recent_likes = valid_ids[-3:] if valid_ids else []
-            recent_likes.reverse() 
+            recent_likes = valid_ids[:3] if valid_ids else [] 
             
             for bid in recent_likes:
                 book = BOOK_DATA.loc[str(bid)]
