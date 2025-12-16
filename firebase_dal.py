@@ -5,6 +5,8 @@ from firebase_admin import credentials, firestore, auth
 from datetime import datetime, timezone
 import sys
 import os
+from cache_manager import cache
+
 
 # --- INITIALIZE FIREBASE ---
 try:
@@ -75,11 +77,18 @@ def get_all_books_from_db():
 
 def get_user_swipes(user_id):
     """Fetches a list of book_ids (ISBNS) the user has already swiped."""
+    cache_key = f"user:{user_id}:swipes"
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return cached
+    
     # CRITICAL: Filters swipes based on the real user_id passed from app.py
     swipes_ref = db.collection('swipes').where('user_id', '==', user_id)
     swipes = swipes_ref.stream()
+    result = [swipe.to_dict()['book_id'] for swipe in swipes]
     
-    return [swipe.to_dict()['book_id'] for swipe in swipes]
+    cache.set(cache_key, result, ttl=300)  # Cache for 5 minutes
+    return result
 
 def add_user_swipe(user_id, book_id, action):
     """Saves a new swipe record ('like' or 'dislike')."""
@@ -90,17 +99,31 @@ def add_user_swipe(user_id, book_id, action):
         'action': action,
         'timestamp': datetime.now(timezone.utc)
     })
+    
+    # Invalidate cache for this user
+    cache.clear_user_cache(user_id)
 
 def get_user_preferences(user_id):
     """Fetches user preferences from the 'users' collection."""
+    cache_key = f"user:{user_id}:preferences"
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return cached
+    
     user_ref = db.collection('users').document(user_id)
     doc = user_ref.get()
-    if doc.exists:
-        return doc.to_dict()
-    return None
+    result = doc.to_dict() if doc.exists else None
+    
+    cache.set(cache_key, result, ttl=300)  # Cache for 5 minutes
+    return result
 
 def get_user_liked_book_ids(user_id):
     """Fetches a list of book_ids that the user has LIKED, sorted by most recent."""
+    cache_key = f"user:{user_id}:liked_books"
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return cached
+    
     swipes_ref = db.collection('swipes').where('user_id', '==', user_id).where('action', '==', 'like')
     
     # 1. Fetch all documents
@@ -123,15 +146,24 @@ def get_user_liked_book_ids(user_id):
 
     # 3. Sort by timestamp descending (newest first)
     data.sort(key=sort_key, reverse=True)
+    result = [item['book_id'] for item in data]
     
-    return [item['book_id'] for item in data]
+    cache.set(cache_key, result, ttl=300)  # Cache for 5 minutes
+    return result
 
 def get_user_disliked_book_ids(user_id):
     """Fetches a list of book_ids that the user has DISLIKED."""
+    cache_key = f"user:{user_id}:disliked_books"
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return cached
+    
     swipes_ref = db.collection('swipes').where('user_id', '==', user_id).where('action', '==', 'dislike')
     swipes = swipes_ref.stream()
+    result = [swipe.to_dict()['book_id'] for swipe in swipes]
     
-    return [swipe.to_dict()['book_id'] for swipe in swipes]
+    cache.set(cache_key, result, ttl=300)  # Cache for 5 minutes
+    return result
 
 def save_user_preferences(user_id, age, genres, frequency):
     """Saves or updates user preferences in the 'users' collection."""
@@ -143,6 +175,9 @@ def save_user_preferences(user_id, age, genres, frequency):
         'preferencesDone': True,
         'updatedAt': datetime.now()
     }, merge=True)
+    
+    # Invalidate preferences cache
+    cache.delete(f"user:{user_id}:preferences")
     return True
 
 # --- FRIENDS SYSTEM ---
@@ -267,6 +302,11 @@ def get_friend_requests(user_id):
 
 def get_friends(user_id):
     """Get list of active friends."""
+    cache_key = f"user:{user_id}:friends"
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return cached
+    
     # Friends can be where user is from_uid OR to_uid, and status is accepted
     friends = []
     
@@ -281,8 +321,10 @@ def get_friends(user_id):
     for f in received:
         other_id = f.to_dict()['from_uid']
         friends.append(other_id)
-        
-    return list(set(friends))
+    
+    result = list(set(friends))
+    cache.set(cache_key, result, ttl=300)  # Cache for 5 minutes
+    return result
 
 def get_friends_preferences_data(friend_ids):
     """
@@ -372,5 +414,7 @@ def remove_user_swipe(user_id, book_id):
     for swipe in swipes:
         swipe.reference.delete()
         deleted = True
-        
+    
+    # Invalidate cache for this user
+    cache.clear_user_cache(user_id)
     return deleted
