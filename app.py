@@ -700,5 +700,85 @@ def save_preferences():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+@app.route('/api/sync_database', methods=['POST'])
+def sync_database():
+    """
+    Sync Firebase data to in-memory BOOK_DATA.
+    This endpoint should be called after adding/updating/deleting books in the admin interface.
+    """
+    global BOOK_DATA, COSINE_SIM
+    
+    try:
+        from firebase_dal import get_all_books_from_db
+        
+        print("Syncing database from Firebase...")
+        
+        # 1. Fetch all books from Firebase
+        raw_data = get_all_books_from_db()
+        
+        if not raw_data:
+            return jsonify({'error': 'No book data found in Firebase'}), 400
+        
+        # 2. Convert to DataFrame
+        df = pd.DataFrame(raw_data)
+        print(f"Loaded {len(df)} records from Firebase.")
+        
+        # 3. Data Cleaning (same as train_model.py)
+        required_cols = ['book_id', 'description', 'genres', 'title', 'image_url', 'author']
+        for col in required_cols:
+            if col not in df.columns:
+                df[col] = ''
+        
+        df.dropna(subset=['book_id'], inplace=True)
+        df['description'] = df['description'].fillna('')
+        df['genres'] = df['genres'].fillna('')
+        df['title'] = df['title'].fillna('Unknown Title')
+        df['author'] = df['author'].fillna('Unknown')
+        
+        # Ensure book_id is the index
+        df['book_id'] = df['book_id'].astype(str)
+        df.set_index('book_id', inplace=True)
+        
+        # 4. Feature Engineering
+        df['soup'] = df['title'] + ' ' + df['description'] + ' ' + df['genres']
+        
+        # 5. Regenerate similarity matrix
+        from sklearn.feature_extraction.text import TfidfVectorizer
+        from sklearn.metrics.pairwise import linear_kernel
+        
+        tfidf = TfidfVectorizer(stop_words='english')
+        tfidf_matrix = tfidf.fit_transform(df['soup'])
+        cosine_sim = linear_kernel(tfidf_matrix, tfidf_matrix)
+        
+        # 6. Update global variables
+        BOOK_DATA = df
+        COSINE_SIM = cosine_sim
+        
+        # 7. Re-process optimization field
+        BOOK_DATA['genres_str'] = BOOK_DATA['genres'].fillna('').astype(str).str.lower()
+        
+        # 8. Save to disk for persistence
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        models_dir = os.path.join(base_dir, 'models')
+        if not os.path.exists(models_dir):
+            os.makedirs(models_dir)
+            
+        joblib.dump(COSINE_SIM, os.path.join(models_dir, 'similarity_matrix.joblib'))
+        joblib.dump(BOOK_DATA, os.path.join(models_dir, 'book_data_processed.joblib'))
+        
+        print(f"Database synced successfully! {len(BOOK_DATA)} books now available.")
+        
+        return jsonify({
+            'success': True, 
+            'message': f'Database synced successfully. {len(BOOK_DATA)} books loaded.',
+            'book_count': len(BOOK_DATA)
+        }), 200
+        
+    except Exception as e:
+        print(f"Error syncing database: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': f'Failed to sync database: {str(e)}'}), 500
+
 if __name__ == "__main__":
     app.run(debug=True, port=5001)

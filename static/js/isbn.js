@@ -25,6 +25,34 @@ const backToLoginBtn = document.getElementById("backToLoginBtn");
 console.log("isbn.js loaded - FINAL ATTEMPT WITH EVENT DELEGATION FIX.");
 
 // ==============================
+// SYNC DATABASE FUNCTION
+// ==============================
+async function syncDatabase() {
+    try {
+        console.log("Syncing database with backend...");
+        const response = await fetch('/api/sync_database', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
+            console.log("Database synced successfully:", result.message);
+            return true;
+        } else {
+            console.error("Database sync failed:", result.error);
+            return false;
+        }
+    } catch (err) {
+        console.error("Error syncing database:", err);
+        return false;
+    }
+}
+
+// ==============================
 // BACK TO LOGIN
 // ==============================
 backToLoginBtn.addEventListener("click", () => {
@@ -210,9 +238,17 @@ function saveNewBook(event) {
     db.collection("books")
         .doc(isbnToSave)
         .set(book, { merge: true })
-        .then(() => {
+        .then(async () => {
             alert(`Book "${book.title}" added/updated successfully!`);
             console.log("Book saved successfully.");
+
+            // Sync the database to update search
+            const synced = await syncDatabase();
+            if (synced) {
+                console.log("Book is now available in search!");
+            } else {
+                console.warn("Book saved but search database sync failed. You may need to restart the server.");
+            }
 
             // Clean up the UI
             bookInfoDiv.innerHTML = "";
@@ -357,8 +393,17 @@ function updateBook(event) {
     db.collection("books")
         .doc(isbnToUpdate)
         .update(updated)
-        .then(() => {
+        .then(async () => {
             alert("Book updated successfully!");
+
+            // Sync the database to update search
+            const synced = await syncDatabase();
+            if (synced) {
+                console.log("Updated book is now available in search!");
+            } else {
+                console.warn("Book updated but search database sync failed.");
+            }
+
             dbBookInfoDiv.innerHTML = "";
             dbIsbnInput.value = "";
             currentIsbn = null;
@@ -381,8 +426,17 @@ function deleteBook(event) {
     db.collection("books")
         .doc(isbnToDelete)
         .delete()
-        .then(() => {
+        .then(async () => {
             alert("Book deleted successfully!");
+
+            // Sync the database to update search
+            const synced = await syncDatabase();
+            if (synced) {
+                console.log("Book removed from search database!");
+            } else {
+                console.warn("Book deleted but search database sync failed.");
+            }
+
             dbBookInfoDiv.innerHTML = "";
             dbIsbnInput.value = "";
             currentIsbn = null;
