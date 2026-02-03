@@ -100,8 +100,10 @@ def add_user_swipe(user_id, book_id, action):
         'timestamp': datetime.now(timezone.utc)
     })
     
-    # Invalidate cache for this user
-    cache.clear_user_cache(user_id)
+    # OPTIMIZED: Only invalidate swipe-related caches, keep preferences and friends cached
+    cache.delete(f"user:{user_id}:swipes")
+    cache.delete(f"user:{user_id}:liked_books")
+    cache.delete(f"user:{user_id}:disliked_books")
 
 def get_user_preferences(user_id):
     """Fetches user preferences from the 'users' collection."""
@@ -415,6 +417,8 @@ def remove_user_swipe(user_id, book_id):
         swipe.reference.delete()
         deleted = True
     
-    # Invalidate cache for this user
-    cache.clear_user_cache(user_id)
+    # OPTIMIZED: Only invalidate swipe-related caches, keep preferences and friends cached
+    cache.delete(f"user:{user_id}:swipes")
+    cache.delete(f"user:{user_id}:liked_books")
+    cache.delete(f"user:{user_id}:disliked_books")
     return deleted
