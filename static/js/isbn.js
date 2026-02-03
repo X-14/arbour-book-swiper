@@ -239,15 +239,17 @@ function saveNewBook(event) {
         .doc(isbnToSave)
         .set(book, { merge: true })
         .then(async () => {
-            alert(`Book "${book.title}" added/updated successfully!`);
-            console.log("Book saved successfully.");
+            alert(`Book "${book.title}" added/updated successfully! Syncing database...`);
+            console.log("Book saved successfully. Syncing database...");
 
             // Sync the database to update search
             const synced = await syncDatabase();
             if (synced) {
-                console.log("Book is now available in search!");
+                console.log("✅ Book is now available in search!");
+                alert(`✅ Book "${book.title}" is now available in search!`);
             } else {
-                console.warn("Book saved but search database sync failed. You may need to restart the server.");
+                console.warn("⚠️ Book saved but search database sync failed.");
+                alert("⚠️ Book saved but sync failed. You may need to restart the server.");
             }
 
             // Clean up the UI
@@ -394,14 +396,15 @@ function updateBook(event) {
         .doc(isbnToUpdate)
         .update(updated)
         .then(async () => {
-            alert("Book updated successfully!");
+            alert("Book updated successfully! Syncing database...");
 
             // Sync the database to update search
             const synced = await syncDatabase();
             if (synced) {
-                console.log("Updated book is now available in search!");
+                console.log("✅ Updated book is now available in search!");
+                alert("✅ Book updated and synced successfully!");
             } else {
-                console.warn("Book updated but search database sync failed.");
+                console.warn("⚠️ Book updated but search database sync failed.");
             }
 
             dbBookInfoDiv.innerHTML = "";
@@ -427,14 +430,15 @@ function deleteBook(event) {
         .doc(isbnToDelete)
         .delete()
         .then(async () => {
-            alert("Book deleted successfully!");
+            alert("Book deleted successfully! Syncing database...");
 
             // Sync the database to update search
             const synced = await syncDatabase();
             if (synced) {
-                console.log("Book removed from search database!");
+                console.log("✅ Book removed from search database!");
+                alert("✅ Book deleted and synced successfully!");
             } else {
-                console.warn("Book deleted but search database sync failed.");
+                console.warn("⚠️ Book deleted but search database sync failed.");
             }
 
             dbBookInfoDiv.innerHTML = "";
